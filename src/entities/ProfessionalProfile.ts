@@ -72,6 +72,15 @@ export class ProfessionalProfile {
   @Column({ type: 'json', nullable: true })
   badges: string[] | null;
 
+  @Column({ type: 'int', default: 0 })
+  totalXP: number;
+
+  @Column({ type: 'int', default: 1 })
+  currentLevel: number;
+
+  @Column({ type: 'int', default: 0 })
+  consecutiveCompletions: number;
+
   @Column({
     type: 'enum',
     enum: OnboardingStatus,

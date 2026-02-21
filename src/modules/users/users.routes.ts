@@ -13,5 +13,6 @@ router.get('/profile', asyncHandler(controller.getProfile));
 router.patch('/profile', asyncHandler(controller.updateProfile));
 router.post('/profile-picture', uploadProfilePicture, asyncHandler(controller.uploadProfilePicture));
 router.patch('/role', asyncHandler(controller.upgradeRole));
+router.get('/leads', asyncHandler(controller.getLeads));
 
 export default router;

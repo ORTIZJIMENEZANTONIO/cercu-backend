@@ -3,6 +3,7 @@ import { ProfessionalsController } from './professionals.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireRole } from '../../middleware/role.middleware';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { uploadWorkPhotos } from '../../middleware/upload.middleware';
 
 const router = Router();
 const controller = new ProfessionalsController();
@@ -23,5 +24,14 @@ router.get('/leads', requireRole('professional', 'admin'), asyncHandler(controll
 router.get('/leads/:id/preview', requireRole('professional', 'admin'), asyncHandler(controller.getLeadPreview));
 router.post('/leads/:id/take', requireRole('professional', 'admin'), asyncHandler(controller.takeLead));
 router.post('/leads/:id/decline', requireRole('professional', 'admin'), asyncHandler(controller.declineLead));
+
+// Work Photos
+router.get('/work-photos', requireRole('professional', 'admin'), asyncHandler(controller.getWorkPhotos));
+router.post('/work-photos/:categoryId', requireRole('professional', 'admin'), uploadWorkPhotos, asyncHandler(controller.addWorkPhotos));
+router.delete('/work-photos/:id', requireRole('professional', 'admin'), asyncHandler(controller.deleteWorkPhoto));
+
+// Pending Profile Changes
+router.post('/profile-changes', requireRole('professional', 'admin'), asyncHandler(controller.requestProfileChange));
+router.get('/profile-changes', requireRole('professional', 'admin'), asyncHandler(controller.getPendingChanges));
 
 export default router;

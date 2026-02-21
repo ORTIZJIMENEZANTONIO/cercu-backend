@@ -26,3 +26,9 @@ export const uploadProfilePicture = multer({
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 }).single('profilePicture');
+
+export const uploadWorkPhotos = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+}).array('photos', 10);

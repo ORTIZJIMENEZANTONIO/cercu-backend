@@ -58,4 +58,45 @@ export class ProfessionalsController {
     const result = await service.getPublicProfile(parseInt(req.params.id));
     res.json({ success: true, data: result });
   }
+
+  // Work Photos
+  async getWorkPhotos(req: Request, res: Response) {
+    const result = await service.getWorkPhotos(req.user!.id);
+    res.json({ success: true, data: result });
+  }
+
+  async addWorkPhotos(req: Request, res: Response) {
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      res.status(400).json({ success: false, error: { message: 'No files uploaded' } });
+      return;
+    }
+    const filenames = files.map(f => f.filename);
+    const result = await service.addWorkPhotos(
+      req.user!.id,
+      parseInt(req.params.categoryId),
+      filenames
+    );
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async deleteWorkPhoto(req: Request, res: Response) {
+    const result = await service.deleteWorkPhoto(req.user!.id, parseInt(req.params.id));
+    res.json({ success: true, ...result });
+  }
+
+  // Pending Changes
+  async requestProfileChange(req: Request, res: Response) {
+    const result = await service.requestProfileChange(
+      req.user!.id,
+      req.body.fieldName,
+      req.body.requestedValue
+    );
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async getPendingChanges(req: Request, res: Response) {
+    const result = await service.getPendingChanges(req.user!.id);
+    res.json({ success: true, data: result });
+  }
 }

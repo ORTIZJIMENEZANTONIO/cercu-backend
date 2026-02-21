@@ -7,6 +7,10 @@ import { Lead, LeadStatus } from '../../entities/Lead';
 import { LeadMatch, MatchStatus } from '../../entities/LeadMatch';
 import { Wallet } from '../../entities/Wallet';
 import { WalletTransaction, TransactionType, TransactionReason } from '../../entities/WalletTransaction';
+import { ProfessionalWorkPhoto } from '../../entities/ProfessionalWorkPhoto';
+import { PendingProfileChange, ChangeStatus } from '../../entities/PendingProfileChange';
+import { Plan } from '../../entities/Plan';
+import { Subscription, SubscriptionStatus } from '../../entities/Subscription';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { haversineDistance } from '../../utils/haversine';
 
@@ -19,6 +23,10 @@ export class ProfessionalsService {
   private walletRepo = AppDataSource.getRepository(Wallet);
   private txRepo = AppDataSource.getRepository(WalletTransaction);
   private userRepo = AppDataSource.getRepository(User);
+  private workPhotoRepo = AppDataSource.getRepository(ProfessionalWorkPhoto);
+  private pendingChangeRepo = AppDataSource.getRepository(PendingProfileChange);
+  private planRepo = AppDataSource.getRepository(Plan);
+  private subRepo = AppDataSource.getRepository(Subscription);
 
   async onboard(userId: string, data: {
     businessName: string;
@@ -75,6 +83,26 @@ export class ProfessionalsService {
       );
     }
 
+    // Auto-create Starter subscription
+    try {
+      const starterPlan = await this.planRepo.findOne({ where: { slug: 'starter' } });
+      if (starterPlan) {
+        const now = new Date();
+        await this.subRepo.save(
+          this.subRepo.create({
+            userId,
+            planId: starterPlan.id,
+            status: SubscriptionStatus.ACTIVE,
+            currentPeriodStart: now,
+            currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+            autoRenew: true,
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Failed to create starter subscription:', err);
+    }
+
     return this.getProfile(userId);
   }
 
@@ -97,6 +125,13 @@ export class ProfessionalsService {
   }
 
   async updateCategories(userId: string, categoryIds: number[]) {
+    if (categoryIds.length > 4) {
+      throw new AppError('Maximum 4 categories allowed', 400);
+    }
+    if (categoryIds.length === 0) {
+      throw new AppError('At least 1 category is required', 400);
+    }
+
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) throw new AppError('Professional profile not found', 404);
 
@@ -348,5 +383,98 @@ export class ProfessionalsService {
       })),
       isAvailable: profile.isAvailable,
     };
+  }
+
+  // ─── Work Photos ───────────────────────────────────────────
+
+  async getWorkPhotos(userId: string) {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) throw new AppError('Professional profile not found', 404);
+
+    return this.workPhotoRepo.find({
+      where: { professionalProfileId: profile.id },
+      order: { categoryId: 'ASC', sortOrder: 'ASC' },
+    });
+  }
+
+  async addWorkPhotos(userId: string, categoryId: number, filenames: string[]) {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) throw new AppError('Professional profile not found', 404);
+
+    const existingCount = await this.workPhotoRepo.count({
+      where: { professionalProfileId: profile.id, categoryId },
+    });
+
+    if (existingCount + filenames.length > 10) {
+      throw new AppError('Maximum 10 photos per category', 400);
+    }
+
+    const photos = [];
+    for (let i = 0; i < filenames.length; i++) {
+      const photo = await this.workPhotoRepo.save(
+        this.workPhotoRepo.create({
+          professionalProfileId: profile.id,
+          categoryId,
+          url: `/uploads/${filenames[i]}`,
+          sortOrder: existingCount + i,
+        })
+      );
+      photos.push(photo);
+    }
+
+    return photos;
+  }
+
+  async deleteWorkPhoto(userId: string, photoId: number) {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) throw new AppError('Professional profile not found', 404);
+
+    const photo = await this.workPhotoRepo.findOne({
+      where: { id: photoId, professionalProfileId: profile.id },
+    });
+    if (!photo) throw new AppError('Photo not found', 404);
+
+    await this.workPhotoRepo.remove(photo);
+    return { deleted: true };
+  }
+
+  // ─── Pending Profile Changes (Name/Phone) ─────────────────
+
+  async requestProfileChange(userId: string, fieldName: string, requestedValue: string) {
+    if (!['name', 'phone'].includes(fieldName)) {
+      throw new AppError('Only name and phone changes require approval', 400);
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    // Cancel any existing pending change for the same field
+    await this.pendingChangeRepo
+      .createQueryBuilder()
+      .update(PendingProfileChange)
+      .set({ status: ChangeStatus.REJECTED })
+      .where('userId = :userId AND fieldName = :fieldName AND status = :status', {
+        userId, fieldName, status: ChangeStatus.PENDING,
+      })
+      .execute();
+
+    const change = await this.pendingChangeRepo.save(
+      this.pendingChangeRepo.create({
+        userId,
+        fieldName,
+        currentValue: fieldName === 'name' ? user.name : user.phone,
+        requestedValue,
+        status: ChangeStatus.PENDING,
+      })
+    );
+
+    return change;
+  }
+
+  async getPendingChanges(userId: string) {
+    return this.pendingChangeRepo.find({
+      where: { userId, status: ChangeStatus.PENDING },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

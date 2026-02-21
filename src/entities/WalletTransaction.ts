@@ -19,6 +19,11 @@ export enum TransactionReason {
   REFUND = 'refund',
   ADMIN_ADJUSTMENT = 'admin_adjustment',
   BONUS = 'bonus',
+  SUBSCRIPTION_PAYMENT = 'subscription_payment',
+  BOOST_PURCHASE = 'boost_purchase',
+  MISSION_REWARD = 'mission_reward',
+  ACHIEVEMENT_REWARD = 'achievement_reward',
+  CREDIT_REWARD = 'credit_reward',
 }
 
 @Entity('wallet_transactions')
@@ -50,6 +55,12 @@ export class WalletTransaction {
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  referenceType: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  referenceId: number | null;
 
   @CreateDateColumn()
   createdAt: Date;

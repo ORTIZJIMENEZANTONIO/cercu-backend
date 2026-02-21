@@ -27,4 +27,9 @@ export class UsersController {
     const result = await service.upgradeToProRole(req.user!.id);
     res.json({ success: true, data: result });
   }
+
+  async getLeads(req: Request, res: Response) {
+    const result = await service.getLeads(req.user!.id);
+    res.json({ success: true, data: result });
+  }
 }

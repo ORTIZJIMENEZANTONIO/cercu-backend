@@ -3,10 +3,13 @@ import { Lead, LeadStatus } from '../../entities/Lead';
 import { LeadChip } from '../../entities/LeadChip';
 import { LeadConditionalFieldValue } from '../../entities/LeadConditionalFieldValue';
 import { CategoryPricing, UrgencyTier } from '../../entities/CategoryPricing';
+import { ProfessionalProfile } from '../../entities/ProfessionalProfile';
+import { MissionType } from '../../entities/MissionTemplate';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { MatchingService } from './matching.service';
 import { parsePagination, paginatedResult } from '../../utils/pagination';
 import { haversineDistance } from '../../utils/haversine';
+import { XPReason } from '../../entities/ProXPLog';
 
 const matchingService = new MatchingService();
 
@@ -176,7 +179,39 @@ export class LeadsService {
     }
 
     lead.status = newStatus;
-    return this.leadRepo.save(lead);
+    const savedLead = await this.leadRepo.save(lead);
+
+    // Hook gamification on COMPLETED
+    if (newStatus === LeadStatus.COMPLETED && lead.takenByProfessionalId) {
+      try {
+        const profileRepo = AppDataSource.getRepository(ProfessionalProfile);
+        const profile = await profileRepo.findOne({ where: { id: lead.takenByProfessionalId } });
+        if (profile) {
+          // Increment completedJobs and consecutiveCompletions
+          profile.completedJobs += 1;
+          profile.consecutiveCompletions += 1;
+          await profileRepo.save(profile);
+
+          // Lazy-import gamification service to avoid circular deps
+          const { GamificationService } = await import('../gamification/gamification.service');
+          const gamService = new GamificationService();
+
+          // Grant XP for job completion
+          await gamService.grantXP(profile.userId, 50, XPReason.JOB_COMPLETED, leadId);
+
+          // Check achievements
+          await gamService.checkAchievements(profile.userId);
+
+          // Update mission progress
+          await gamService.updateMissionProgress(profile.userId, MissionType.COMPLETE_JOBS, 1);
+          await gamService.updateMissionProgress(profile.userId, MissionType.CONSECUTIVE_COMPLETIONS, 1);
+        }
+      } catch (err) {
+        console.error('Gamification hook error:', err);
+      }
+    }
+
+    return savedLead;
   }
 
   async cancel(leadId: number, userId: string) {

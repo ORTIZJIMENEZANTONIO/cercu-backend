@@ -3,6 +3,7 @@ import { AppDataSource } from '../ormconfig';
 import { seedCategories } from './categories.seed';
 import { seedAdmin } from './admin.seed';
 import { seedTestData } from './testdata.seed';
+import { seedGamification } from './gamification.seed';
 
 async function runSeeds() {
   try {
@@ -12,6 +13,7 @@ async function runSeeds() {
     await seedCategories();
     await seedAdmin();
     await seedTestData();
+    await seedGamification();
 
     console.log('All seeds completed successfully');
     process.exit(0);

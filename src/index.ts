@@ -2,11 +2,14 @@ import 'reflect-metadata';
 import { createApp } from './app';
 import { config } from './config';
 import { AppDataSource } from './ormconfig';
+import { initCronJobs } from './jobs';
 
 async function bootstrap() {
   try {
     await AppDataSource.initialize();
     console.log('Database connected successfully');
+
+    initCronJobs();
 
     const app = createApp();
 

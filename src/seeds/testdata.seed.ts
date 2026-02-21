@@ -15,6 +15,7 @@ import { LeadConditionalFieldValue } from '../entities/LeadConditionalFieldValue
 import { LeadMatch, MatchStatus } from '../entities/LeadMatch';
 import { UrgencyTier } from '../entities/CategoryPricing';
 import { AdminAction, AdminActionType } from '../entities/AdminAction';
+import { Report, ReportTargetType, ReportReason, ReportStatus } from '../entities/Report';
 
 export async function seedTestData() {
   const userRepo = AppDataSource.getRepository(User);
@@ -31,6 +32,7 @@ export async function seedTestData() {
   const leadFieldRepo = AppDataSource.getRepository(LeadConditionalFieldValue);
   const matchRepo = AppDataSource.getRepository(LeadMatch);
   const adminRepo = AppDataSource.getRepository(AdminAction);
+  const reportRepo = AppDataSource.getRepository(Report);
 
   // Check if test data already exists
   const existingTestUser = await userRepo.findOne({ where: { phone: '+525530001001' } });
@@ -187,9 +189,9 @@ export async function seedTestData() {
       description: 'Impermeabilización profesional y diseño de jardines. Zona Tlalpan-Coyoacán.',
       baseLat: 19.2890, baseLng: -99.1680,
       serviceRadiusKm: 12,
-      onboardingStatus: OnboardingStatus.PENDING,
-      rating: 0, completedJobs: 0, avgResponseTimeMinutes: 0,
-      acceptanceRate: 0, cancellationRate: 0,
+      onboardingStatus: OnboardingStatus.COMPLETED,
+      rating: 4.10, completedJobs: 18, avgResponseTimeMinutes: 25,
+      acceptanceRate: 75.00, cancellationRate: 5.00,
       badges: null,
       categorySlugs: ['impermeabilizacion', 'jardineria'],
       walletBalance: 500,
@@ -753,6 +755,94 @@ export async function seedTestData() {
     console.log(`  ${adminActions.length} admin actions created`);
   }
 
+  // ─── 7. REPORTS ──────────────────────────────────────────
+  console.log('Seeding reports...');
+
+  const reportData = [
+    {
+      reporterUserId: regularUsers[0].id, // María
+      targetType: ReportTargetType.PROFESSIONAL,
+      targetUserId: proUsers[3].id, // Pedro Gómez
+      targetLeadId: null,
+      reason: ReportReason.NO_SHOW,
+      description: 'El profesional confirmó la cita para las 10am pero nunca llegó ni contestó llamadas.',
+      status: ReportStatus.PENDING,
+      adminNotes: null,
+      resolvedAt: null,
+    },
+    {
+      reporterUserId: regularUsers[1].id, // Carlos
+      targetType: ReportTargetType.LEAD,
+      targetUserId: null,
+      targetLeadId: leads[3].id, // lead de gas
+      reason: ReportReason.FALSE_INFORMATION,
+      description: 'Este lead tiene dirección falsa, al llegar no existe el domicilio indicado.',
+      status: ReportStatus.REVIEWING,
+      adminNotes: null,
+      resolvedAt: null,
+    },
+    {
+      reporterUserId: proUsers[0].id, // Juan Pérez
+      targetType: ReportTargetType.USER,
+      targetUserId: regularUsers[2].id, // Ana Martínez
+      targetLeadId: null,
+      reason: ReportReason.INAPPROPRIATE_BEHAVIOR,
+      description: 'La usuaria fue agresiva y grosera durante la visita de evaluación.',
+      status: ReportStatus.RESOLVED,
+      adminNotes: 'Se verificó con evidencia. Se aplicó flag a la cuenta de la usuaria.',
+      resolvedAt: hoursAgo(48),
+    },
+    {
+      reporterUserId: regularUsers[3].id, // Roberto
+      targetType: ReportTargetType.PROFESSIONAL,
+      targetUserId: proUsers[2].id, // Fernando Ramos
+      targetLeadId: null,
+      reason: ReportReason.FRAUD,
+      description: 'El profesional cobró por materiales que no utilizó y se negó a devolver el dinero.',
+      status: ReportStatus.DISMISSED,
+      adminNotes: 'El profesional presentó facturas de compra de materiales. Reporte desestimado por falta de evidencia.',
+      resolvedAt: hoursAgo(24),
+    },
+    {
+      reporterUserId: regularUsers[4].id, // Laura
+      targetType: ReportTargetType.PROFESSIONAL,
+      targetUserId: proUsers[1].id, // Miguel Ángel
+      targetLeadId: null,
+      reason: ReportReason.SPAM,
+      description: 'El profesional envía mensajes promocionales no solicitados repetidamente.',
+      status: ReportStatus.PENDING,
+      adminNotes: null,
+      resolvedAt: null,
+    },
+    {
+      reporterUserId: proUsers[1].id, // Miguel Ángel
+      targetType: ReportTargetType.LEAD,
+      targetUserId: null,
+      targetLeadId: leads[7].id, // lead de herrería
+      reason: ReportReason.FALSE_INFORMATION,
+      description: 'Las fotos del lead no corresponden al trabajo real, el problema es mucho más grande de lo indicado.',
+      status: ReportStatus.REVIEWING,
+      adminNotes: null,
+      resolvedAt: null,
+    },
+  ];
+
+  for (const rd of reportData) {
+    await reportRepo.save(reportRepo.create({
+      reporterUserId: rd.reporterUserId,
+      targetType: rd.targetType,
+      targetUserId: rd.targetUserId,
+      targetLeadId: rd.targetLeadId,
+      reason: rd.reason,
+      description: rd.description,
+      status: rd.status,
+      adminNotes: rd.adminNotes,
+      resolvedAt: rd.resolvedAt,
+    }));
+  }
+
+  console.log(`  ${reportData.length} reports created`);
+
   console.log('Test data seeded successfully!');
   console.log('Summary:');
   console.log(`  - ${regularUsers.length} regular users (${dualRoleIndices.size} dual-role with pro profile)`);
@@ -761,4 +851,5 @@ export async function seedTestData() {
   console.log(`  - ${matchCount} lead matches`);
   console.log(`  - ${txCount} wallet transactions (+ ${proProfileData.length} topups)`);
   console.log(`  - 5 admin actions`);
+  console.log(`  - ${reportData.length} reports`);
 }

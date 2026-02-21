@@ -46,6 +46,9 @@ export class LeadMatch {
   @Column({ type: 'enum', enum: MatchStatus, default: MatchStatus.PENDING })
   status: MatchStatus;
 
+  @Column({ default: false })
+  isBoosted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

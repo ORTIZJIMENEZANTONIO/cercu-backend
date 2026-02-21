@@ -14,6 +14,10 @@ import professionalRoutes from './modules/professionals/professionals.routes';
 import leadRoutes from './modules/leads/leads.routes';
 import walletRoutes from './modules/wallet/wallet.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import planRoutes from './modules/plans/plans.routes';
+import subscriptionRoutes from './modules/subscriptions/subscriptions.routes';
+import boostRoutes from './modules/boosts/boosts.routes';
+import gamificationRoutes from './modules/gamification/gamification.routes';
 
 export function createApp() {
   const app = express();
@@ -39,6 +43,10 @@ export function createApp() {
   app.use('/api/v1/leads', leadRoutes);
   app.use('/api/v1/wallet', walletRoutes);
   app.use('/api/v1/admin', adminRoutes);
+  app.use('/api/v1/plans', planRoutes);
+  app.use('/api/v1/subscriptions', subscriptionRoutes);
+  app.use('/api/v1/boosts', boostRoutes);
+  app.use('/api/v1/gamification', gamificationRoutes);
 
   app.use(errorHandler);
 
