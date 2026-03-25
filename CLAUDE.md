@@ -209,7 +209,7 @@ POST   /admin/pending-changes/:id/approve|reject
 - **ActiveBoost** — userId, boostTypeId, categoryId (nullable), status, startsAt/expiresAt, scoreBonus, pricePaid, usedFreeSlot
 
 ### Guardianes del Barrio Verde
-- **GuardianesEvent** — eventId, type (registration/session_start/chapter_start/chapter_complete/mission_start/mission_complete/mission_retry), timestamp, playerId (hash anónimo), data (JSON: age, chapterId, missionId, device info). Sin auth — juego para niños. Índices en type y playerId. Tabla: `guardianes_events`.
+- **GuardianesEvent** — eventId, type (registration/session_start/chapter_start/chapter_complete/mission_start/mission_complete/mission_retry), timestamp (BIGINT, parseado como Number en service porque MySQL driver devuelve string), playerId (hash anónimo), data (JSON: age, chapterId, missionId, device info). Sin auth — juego para niños. Índices en type y playerId. Tabla: `guardianes_events` (creada manualmente en prod, synchronize off).
 
 ### Admin
 - **AdminAction** — Full audit log (40+ action types), with metadata JSON (before/after)
