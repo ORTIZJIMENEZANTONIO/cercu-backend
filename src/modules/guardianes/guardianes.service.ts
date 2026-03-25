@@ -22,7 +22,9 @@ export class GuardianesService {
   }
 
   async getStats() {
-    const events = await repo().find({ order: { timestamp: 'ASC' } });
+    const rawEvents = await repo().find({ order: { timestamp: 'ASC' } });
+    // BIGINT comes as string from MySQL driver — ensure timestamp is number
+    const events = rawEvents.map(e => ({ ...e, timestamp: Number(e.timestamp) }));
 
     // Unique players
     const playerIds = new Set(events.map(e => e.playerId));
@@ -185,9 +187,10 @@ export class GuardianesService {
   }
 
   async getEvents(limit = 500) {
-    return repo().find({
+    const raw = await repo().find({
       order: { timestamp: 'DESC' },
       take: limit,
     });
+    return raw.map(e => ({ ...e, timestamp: Number(e.timestamp) }));
   }
 }
