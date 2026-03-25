@@ -18,6 +18,7 @@ import planRoutes from './modules/plans/plans.routes';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes';
 import boostRoutes from './modules/boosts/boosts.routes';
 import gamificationRoutes from './modules/gamification/gamification.routes';
+import guardianesRoutes from './modules/guardianes/guardianes.routes';
 
 export function createApp() {
   const app = express();
@@ -47,6 +48,7 @@ export function createApp() {
   app.use('/api/v1/subscriptions', subscriptionRoutes);
   app.use('/api/v1/boosts', boostRoutes);
   app.use('/api/v1/gamification', gamificationRoutes);
+  app.use('/api/guardianes', guardianesRoutes);
 
   app.use(errorHandler);
 

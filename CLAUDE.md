@@ -56,7 +56,7 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 34 TypeORM entities
+│   ├── entities/             # 35 TypeORM entities
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -68,6 +68,7 @@ cercu-backend/
 │   │   ├── plans/            # Plan listing
 │   │   ├── boosts/           # Boost purchase, rotation, category-specific
 │   │   ├── gamification/     # XP, levels, achievements, missions, trust score
+│   │   ├── guardianes/       # Analytics para juego Guardianes del Barrio Verde (público, sin auth)
 │   │   └── admin/            # Full CRUD for all entities, audit logs, moderation
 │   ├── jobs/                 # 4 cron jobs
 │   ├── seeds/                # Database seeding (categories, admin, test data, gamification)
@@ -138,6 +139,11 @@ GET    /gamification/missions              [AUTH]
 GET    /gamification/xp-history            [AUTH]
 GET    /gamification/trust-score           [AUTH]
 
+# Guardianes del Barrio Verde (público, sin auth)
+POST   /api/guardianes/events                  # Recibe evento de analytics del juego
+GET    /api/guardianes/stats                   # Estadísticas agregadas para admin dashboard
+GET    /api/guardianes/events?limit=500        # Lista eventos crudos (debug)
+
 # Admin (40+ endpoints, all [AUTH, ADMIN])
 GET    /admin/summary
 GET    /admin/users
@@ -154,7 +160,7 @@ GET    /admin/pending-changes
 POST   /admin/pending-changes/:id/approve|reject
 ```
 
-## Entities (34)
+## Entities (35)
 
 ### Core
 - **User** (uuid) — phone, email, name, role (user/professional/admin), authProvider (phone/google)
@@ -201,6 +207,9 @@ POST   /admin/pending-changes/:id/approve|reject
 ### Boosts
 - **BoostType** — slug, scoreBonus, durationHours, priceMXN
 - **ActiveBoost** — userId, boostTypeId, categoryId (nullable), status, startsAt/expiresAt, scoreBonus, pricePaid, usedFreeSlot
+
+### Guardianes del Barrio Verde
+- **GuardianesEvent** — eventId, type (registration/session_start/chapter_start/chapter_complete/mission_start/mission_complete/mission_retry), timestamp, playerId (hash anónimo), data (JSON: age, chapterId, missionId, device info). Sin auth — juego para niños. Índices en type y playerId. Tabla: `guardianes_events`.
 
 ### Admin
 - **AdminAction** — Full audit log (40+ action types), with metadata JSON (before/after)
