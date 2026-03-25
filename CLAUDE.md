@@ -334,6 +334,35 @@ Dynamic configuration (editable by admin without redeploy):
 - `trust_score_base` (default 50) — Base trust score
 - `xp_job_completed`, `xp_high_rating`, `xp_fast_response`, `xp_consecutive` — XP award amounts
 
+## Deployment (Production)
+
+**Server:** `srv1420267` — `/var/www/cercu-backend`
+**Process manager:** PM2 (`cercu-api`)
+
+### Deploy steps
+```bash
+# On server (ssh into srv1420267)
+cd /var/www/cercu-backend
+git pull origin main
+npm install            # Need devDeps (@types/*) for tsc compilation
+npm run build          # or: yarn build
+pm2 restart cercu-api
+```
+
+### First-time setup
+```bash
+npm install
+npm run build
+pm2 start dist/index.js --name cercu-api
+pm2 save
+pm2 startup
+```
+
+### Notes
+- Do NOT use `npm ci --omit=dev` before build — `tsc` needs `@types/*` from devDependencies
+- After build, optionally run `npm prune --omit=dev` to slim down node_modules
+- `Dockerfile.prod` available for containerized deployment (multi-stage build, node:20-alpine)
+
 ## Conventions
 - All service methods are async
 - Wrap route handlers with `asyncHandler()` for error propagation
