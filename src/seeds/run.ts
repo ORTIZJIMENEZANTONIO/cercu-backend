@@ -4,6 +4,7 @@ import { seedCategories } from './categories.seed';
 import { seedAdmin } from './admin.seed';
 import { seedTestData } from './testdata.seed';
 import { seedGamification } from './gamification.seed';
+import { seedObservatoryAdmin } from './observatory-admin.seed';
 
 async function runSeeds() {
   try {
@@ -14,6 +15,7 @@ async function runSeeds() {
     await seedAdmin();
     await seedTestData();
     await seedGamification();
+    await seedObservatoryAdmin();
 
     console.log('All seeds completed successfully');
     process.exit(0);

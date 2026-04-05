@@ -22,9 +22,14 @@ export const config = {
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES || '5', 10),
   },
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    origin: (process.env.CORS_ORIGIN || 'http://localhost:3001').split(',').map(s => s.trim()),
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
+  },
+  observatory: {
+    adminEmail: process.env.OBS_ADMIN_EMAIL || 'admin@observatorio.cdmx',
+    adminPassword: process.env.OBS_ADMIN_PASSWORD || '',
+    adminName: process.env.OBS_ADMIN_NAME || 'Admin Observatorios',
   },
 };

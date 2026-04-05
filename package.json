@@ -12,6 +12,7 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/ormconfig.ts"
   },
   "dependencies": {
+    "@turf/turf": "^7.3.4",
     "@types/multer": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

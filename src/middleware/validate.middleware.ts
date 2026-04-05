@@ -1,8 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import Joi from 'joi';
-import { AppError } from './errorHandler.middleware';
+import { Request, Response, NextFunction } from "express";
+import Joi from "joi";
+import { AppError } from "./errorHandler.middleware";
 
-export function validate(schema: Joi.ObjectSchema, property: 'body' | 'query' | 'params' = 'body') {
+export function validate(
+  schema: Joi.ObjectSchema,
+  property: "body" | "query" | "params" = "body"
+) {
   return (req: Request, _res: Response, next: NextFunction) => {
     const { error, value } = schema.validate(req[property], {
       abortEarly: false,
@@ -10,7 +13,7 @@ export function validate(schema: Joi.ObjectSchema, property: 'body' | 'query' | 
     });
 
     if (error) {
-      const messages = error.details.map((d) => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       return next(new AppError(messages, 400));
     }
 

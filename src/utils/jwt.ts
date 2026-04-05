@@ -3,7 +3,8 @@ import { config } from '../config';
 
 interface JwtPayload {
   id: string;
-  phone: string;
+  phone?: string;
+  email?: string;
   role: string;
 }
 

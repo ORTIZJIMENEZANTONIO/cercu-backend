@@ -39,7 +39,12 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 OTP_MOCK=true          # Dev mode: all OTPs are 1234
 OTP_MOCK_CODE=1234
-CORS_ORIGIN=http://localhost:3001
+CORS_ORIGIN=http://localhost:3001,http://localhost:3000,http://localhost:3005
+
+# Observatory Admin (shared backend for both observatories)
+OBS_ADMIN_EMAIL=admin@observatorio.cdmx
+OBS_ADMIN_PASSWORD=<set-your-password>   # Required for seed, bcrypt-hashed (12 rounds)
+OBS_ADMIN_NAME=Admin Observatorios
 ```
 
 Docker: `docker-compose.yml` provides MySQL 8 on port 3307.
@@ -56,7 +61,8 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 35 TypeORM entities
+│   ├── entities/             # 37 TypeORM entities (includes observatory/)
+│   │   └── observatory/     # ObservatoryAdmin, ProspectSubmission, Obs* content entities
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -69,10 +75,14 @@ cercu-backend/
 │   │   ├── boosts/           # Boost purchase, rotation, category-specific
 │   │   ├── gamification/     # XP, levels, achievements, missions, trust score
 │   │   ├── guardianes/       # Analytics para juego Guardianes del Barrio Verde (público, sin auth)
-│   │   └── admin/            # Full CRUD for all entities, audit logs, moderation
+│   │   ├── admin/            # Full CRUD for all entities, audit logs, moderation
+│   │   └── observatory/      # Observatory admin system (auth + CRUD + detector)
+│   │       ├── auth/         # Email+password login (ObservatoryAdmin entity, bcrypt, JWT)
+│   │       ├── admin/        # Prospect approval queue, content CRUD, summary
+│   │       └── detector/     # Geospatial detection (Overpass API + Turf.js)
 │   ├── jobs/                 # 4 cron jobs
-│   ├── seeds/                # Database seeding (categories, admin, test data, gamification)
-│   ├── middleware/           # auth, role, errorHandler, rateLimiter, validate, upload
+│   ├── seeds/                # Database seeding (categories, admin, test data, gamification, observatory-admin)
+│   ├── middleware/           # auth, role, observatory-auth, errorHandler, rateLimiter, validate, upload
 │   ├── utils/                # jwt, asyncHandler, haversine, pagination, phone
 │   └── types/                # TypeScript definitions
 └── uploads/                  # Multer file storage
@@ -372,3 +382,92 @@ pm2 startup
 - Credit rewards tracked in CreditLedger with monthKey for cap enforcement
 - Use `In()` from typeorm for batch loading (avoid N+1 queries)
 - Use `createQueryBuilder` for complex joins and aggregations
+
+## Observatory Admin System
+
+Shared backend for two observatory frontends: **observatorio-techos-verdes** (green roofs) and **observatorio-humedales** (artificial wetlands).
+
+### Architecture
+- **Separate entity**: `ObservatoryAdmin` (not the CERCU `User` table) — email+password auth, bcrypt-hashed
+- **Separate middleware**: `observatory-auth.middleware.ts` — verifies JWT, looks up `observatory_admins` table
+- **Multi-tenant**: Routes use `/:observatory` param (`techos-verdes` | `humedales`), middleware validates admin has access
+- **Approval queue**: `ProspectSubmission` entity — external detectors POST prospects, admin approves/rejects
+
+### Entities
+- `ObservatoryAdmin` (`observatory_admins`) — id (uuid), email, passwordHash, name, observatories (simple-array), isActive
+- `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt
+- `ObsGreenRoof` (`obs_green_roofs`) — green roof CRUD data
+- `ObsCandidateRoof` (`obs_candidate_roofs`) — candidate roof CRUD data
+- `ObsValidationRecord` (`obs_validation_records`) — validation records
+- `ObsHumedal` (`obs_humedales`) — wetland CRUD data
+- `ObsHallazgo` (`obs_hallazgos`) — findings & recommendations
+
+### Observatory API Routes
+Base: `/api/v1/observatory`
+
+```
+# Auth (public)
+POST /auth/login                              # Email + password → JWT tokens
+
+# Auth (protected)
+GET  /auth/me                                 # Current admin info
+
+# Admin (protected, scoped by observatory)
+GET  /:observatory/admin/summary              # Dashboard stats (content counts + prospect counts)
+
+# Prospects (admin)
+GET  /:observatory/admin/prospectos           # List prospects (filterable by status)
+GET  /:observatory/admin/prospectos/:id       # Get prospect detail
+POST /:observatory/admin/prospectos/:id/aprobar   # Approve prospect
+POST /:observatory/admin/prospectos/:id/rechazar  # Reject prospect (requires notas)
+
+# Prospect submission (public — for detector integration)
+POST /:observatory/prospectos                 # Submit new prospect
+
+# Content CRUD (admin, all follow GET/POST + GET/PATCH/DELETE pattern)
+# Techos Verdes:
+/:observatory/admin/green-roofs[/:id]         # Green roof CRUD
+/:observatory/admin/candidates[/:id]          # Candidate roof CRUD
+/:observatory/admin/validations[/:id]         # Validation record CRUD
+# Humedales:
+/:observatory/admin/humedales[/:id]           # Wetland CRUD
+/:observatory/admin/hallazgos[/:id]           # Hallazgo CRUD
+
+# Public read endpoints (no auth)
+GET /:observatory/green-roofs                 # List green roofs
+GET /:observatory/candidates                  # List candidates
+GET /:observatory/validations                 # List validations
+GET /:observatory/humedales                   # List wetlands
+GET /:observatory/hallazgos                   # List hallazgos
+
+# Geospatial Detector (admin)
+POST /:observatory/detector/run               # Run detection (OSM + Turf.js)
+POST /:observatory/detector/submit            # Submit detected candidates as prospects
+```
+
+### Geospatial Detector Module
+**Directory:** `src/modules/observatory/detector/`
+**Dependencies:** `@turf/turf` (spatial analysis — area, centroid, bboxPolygon, booleanPointInPolygon, rectangularity)
+
+Detects candidates using OpenStreetMap data via the **Overpass API** (free, no key required) + **Turf.js** geometric analysis. Two observatory-specific strategies:
+- **techos-verdes**: Queries OSM buildings in bounding box → scores by area, rectangularity, building type, levels, roof material → flat-roof candidate identification
+- **humedales**: Queries OSM water bodies, wetlands, waterways, wastewater plants, parks in bounding box → scores by feature type and area → wetland site identification
+
+The Overpass API queries use `[out:json]` format with configurable bounding box coordinates passed from the frontend. Results can be bulk-submitted as `ProspectSubmission` records with `source: 'ia_detector'`.
+
+### Password Setup
+```bash
+# In .env:
+OBS_ADMIN_EMAIL=admin@observatorio.cdmx
+OBS_ADMIN_PASSWORD=YourSecretPassword
+OBS_ADMIN_NAME=Admin Observatorios
+
+# Then:
+npm run seed   # Creates/updates admin with bcrypt hash (12 rounds)
+```
+
+### Frontend Integration
+Both observatory frontends connect to this backend:
+- **techos-verdes**: `NUXT_PUBLIC_API_BASE_URL=http://localhost:3003/api/v1` (port 3003 dev)
+- **humedales**: `NUXT_PUBLIC_API_BASE_URL=http://localhost:3003/api/v1` (port 3005 prod)
+- Admin pages at `/admin/login` → `/admin/*` with JWT stored in localStorage
