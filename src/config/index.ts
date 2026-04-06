@@ -32,4 +32,15 @@ export const config = {
     adminPassword: process.env.OBS_ADMIN_PASSWORD || '',
     adminName: process.env.OBS_ADMIN_NAME || 'Admin Observatorios',
   },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || '',
+  },
+  gee: {
+    serviceAccountKey: process.env.GEE_SERVICE_ACCOUNT_KEY || '',
+    projectId: process.env.GEE_PROJECT_ID || '',
+  },
+  sentinelHub: {
+    clientId: process.env.SENTINEL_HUB_CLIENT_ID || '',
+    clientSecret: process.env.SENTINEL_HUB_CLIENT_SECRET || '',
+  },
 };
