@@ -204,6 +204,7 @@ export class ObservatoryAdminController {
   // ──────────── Prospectos Noticias ────────────
   async listProspectosNoticias(req: Request, res: Response) {
     const { status, page, limit } = req.query;
+    console.log('Listando prospectos noticias con status:', status, 'page:', page, 'limit:', limit);
     const result = await service.listProspectosNoticias(status as string, Number(page) || 1, Number(limit) || 50);
     res.json({ success: true, ...result });
   }

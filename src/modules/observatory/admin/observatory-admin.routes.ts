@@ -104,16 +104,17 @@ router.get('/:observatory/hallazgos/:id', asyncHandler(c.getHallazgo));
 //  Notihumedal (Articles)
 // ══════════════════════════════════════
 router.get('/:observatory/admin/notihumedal', auth, asyncHandler(c.listNotihumedal));
-router.get('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.getNotihumedal));
-router.post('/:observatory/admin/notihumedal', auth, validate(notihumedalSchema), asyncHandler(c.createNotihumedal));
-router.patch('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.updateNotihumedal));
-router.delete('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.deleteNotihumedal));
 
-// Notihumedal — Prospectos scrapeados
+// Notihumedal — Prospectos scrapeados (must be before /:id to avoid matching "prospectos" as id)
 router.get('/:observatory/admin/notihumedal/prospectos', auth, asyncHandler(c.listProspectosNoticias));
 router.post('/:observatory/admin/notihumedal/prospectos/:id/aprobar', auth, asyncHandler(c.aprobarProspectoNoticia));
 router.post('/:observatory/admin/notihumedal/prospectos/:id/rechazar', auth, validate(rejectProspectSchema), asyncHandler(c.rechazarProspectoNoticia));
 router.post('/:observatory/admin/notihumedal/scraper/run', auth, asyncHandler(c.runScraper));
+
+router.get('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.getNotihumedal));
+router.post('/:observatory/admin/notihumedal', auth, validate(notihumedalSchema), asyncHandler(c.createNotihumedal));
+router.patch('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.updateNotihumedal));
+router.delete('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.deleteNotihumedal));
 
 // Public read
 router.get('/:observatory/notihumedal', asyncHandler(c.listNotihumedal));

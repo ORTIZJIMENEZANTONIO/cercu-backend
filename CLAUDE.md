@@ -13,6 +13,9 @@ Users request services, get matched with nearby professionals. Professionals pay
 - **Jobs:** node-cron
 - **Upload:** Multer (local disk)
 - **Security:** Helmet, CORS, express-rate-limit
+- **AI/Vision:** Google Generative AI (Gemini 2.0 Flash) — roof analysis
+- **Remote Sensing:** Google Earth Engine REST API, Sentinel Hub Statistical API
+- **Geospatial:** @turf/turf (spatial analysis)
 
 ## Commands
 ```bash
@@ -45,6 +48,15 @@ CORS_ORIGIN=http://localhost:3001,http://localhost:3000,http://localhost:3005
 OBS_ADMIN_EMAIL=admin@observatorio.cdmx
 OBS_ADMIN_PASSWORD=<set-your-password>   # Required for seed, bcrypt-hashed (12 rounds)
 OBS_ADMIN_NAME=Admin Observatorios
+
+# Observatory AI — Roof analysis via Gemini
+GEMINI_API_KEY=<your-gemini-api-key>
+
+# Observatory Remote Sensing — Vegetation/water indices
+GEE_SERVICE_ACCOUNT_KEY=<json-string>    # Google Earth Engine service account key
+GEE_PROJECT_ID=<gee-project-id>
+SENTINEL_HUB_CLIENT_ID=<sentinel-hub-client-id>
+SENTINEL_HUB_CLIENT_SECRET=<sentinel-hub-secret>
 ```
 
 Docker: `docker-compose.yml` provides MySQL 8 on port 3307.
@@ -61,8 +73,8 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 37 TypeORM entities (includes observatory/)
-│   │   └── observatory/     # ObservatoryAdmin, ProspectSubmission, Obs* content entities
+│   ├── entities/             # 44 TypeORM entities (34 core + 10 observatory)
+│   │   └── observatory/     # 10 entities: ObservatoryAdmin, ProspectSubmission, Obs* content/CMS/news
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -76,10 +88,12 @@ cercu-backend/
 │   │   ├── gamification/     # XP, levels, achievements, missions, trust score
 │   │   ├── guardianes/       # Analytics para juego Guardianes del Barrio Verde (público, sin auth)
 │   │   ├── admin/            # Full CRUD for all entities, audit logs, moderation
-│   │   └── observatory/      # Observatory admin system (auth + CRUD + detector)
+│   │   └── observatory/      # Observatory system (auth + CRUD + detector + AI + remote sensing)
 │   │       ├── auth/         # Email+password login (ObservatoryAdmin entity, bcrypt, JWT)
-│   │       ├── admin/        # Prospect approval queue, content CRUD, summary
-│   │       └── detector/     # Geospatial detection (Overpass API + Turf.js)
+│   │       ├── admin/        # Prospect approval queue, content CRUD, CMS, notihumedal, admin users
+│   │       ├── detector/     # Geospatial detection (Overpass API + Turf.js)
+│   │       ├── ai/           # Roof analysis via Gemini 2.0 Flash (image → green roof aptitude)
+│   │       └── remote-sensing/  # Vegetation/water indices (GEE + Sentinel Hub + fallback)
 │   ├── jobs/                 # 4 cron jobs
 │   ├── seeds/                # Database seeding (categories, admin, test data, gamification, observatory-admin)
 │   ├── middleware/           # auth, role, observatory-auth, errorHandler, rateLimiter, validate, upload
@@ -170,7 +184,7 @@ GET    /admin/pending-changes
 POST   /admin/pending-changes/:id/approve|reject
 ```
 
-## Entities (35)
+## Entities (44)
 
 ### Core
 - **User** (uuid) — phone, email, name, role (user/professional/admin), authProvider (phone/google)
@@ -393,7 +407,7 @@ Shared backend for two observatory frontends: **observatorio-techos-verdes** (gr
 - **Multi-tenant**: Routes use `/:observatory` param (`techos-verdes` | `humedales`), middleware validates admin has access
 - **Approval queue**: `ProspectSubmission` entity — external detectors POST prospects, admin approves/rejects
 
-### Entities
+### Entities (10)
 - `ObservatoryAdmin` (`observatory_admins`) — id (uuid), email, passwordHash, name, observatories (simple-array), isActive
 - `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt
 - `ObsGreenRoof` (`obs_green_roofs`) — green roof CRUD data
@@ -401,6 +415,9 @@ Shared backend for two observatory frontends: **observatorio-techos-verdes** (gr
 - `ObsValidationRecord` (`obs_validation_records`) — validation records
 - `ObsHumedal` (`obs_humedales`) — wetland CRUD data
 - `ObsHallazgo` (`obs_hallazgos`) — findings & recommendations
+- `ObsNotihumedal` (`obs_notihumedal`) — wetland news articles: titulo, slug, resumen, contenido (longtext), css_content, editor_data (JSON), autor, fecha, tags (JSON), imagen
+- `ObsProspectoNoticia` (`obs_prospecto_noticias`) — scraped news prospects: titulo, resumen, url, fuente, fecha, estado (pendiente/aprobado/rechazado), notasRechazo, urlHash (SHA-256 for dedup), reviewedBy
+- `ObsCmsSection` (`obs_cms_sections`) — CMS page sections: pageSlug, sectionKey, items (JSON array), updatedBy
 
 ### Observatory API Routes
 Base: `/api/v1/observatory`
@@ -433,16 +450,51 @@ POST /:observatory/prospectos                 # Submit new prospect
 /:observatory/admin/humedales[/:id]           # Wetland CRUD
 /:observatory/admin/hallazgos[/:id]           # Hallazgo CRUD
 
+# Notihumedal — Articles (admin CRUD)
+GET  /:observatory/admin/notihumedal          # List articles
+GET  /:observatory/admin/notihumedal/:id      # Get article
+POST /:observatory/admin/notihumedal          # Create article (auto-generates slug)
+PATCH /:observatory/admin/notihumedal/:id     # Update article
+DELETE /:observatory/admin/notihumedal/:id    # Delete article
+
+# Notihumedal — Scraped news prospects (admin)
+GET  /:observatory/admin/notihumedal/prospectos           # List scraped news (filterable by status)
+POST /:observatory/admin/notihumedal/prospectos/:id/aprobar   # Approve scraped news
+POST /:observatory/admin/notihumedal/prospectos/:id/rechazar  # Reject scraped news
+POST /:observatory/admin/notihumedal/scraper/run              # Trigger scraper (placeholder)
+
+# CMS Sections (admin)
+GET  /:observatory/admin/cms/:pageSlug                    # Get all sections for page
+PUT  /:observatory/admin/cms/:pageSlug/:sectionKey        # Save section content
+
+# Admin Users (admin)
+GET    /:observatory/admin/usuarios           # List admin users for observatory
+POST   /:observatory/admin/usuarios           # Create admin user
+PATCH  /:observatory/admin/usuarios/:id       # Update admin user
+DELETE /:observatory/admin/usuarios/:id       # Delete admin user
+
 # Public read endpoints (no auth)
 GET /:observatory/green-roofs                 # List green roofs
+GET /:observatory/green-roofs/:id             # Get green roof
 GET /:observatory/candidates                  # List candidates
+GET /:observatory/candidates/:id              # Get candidate
 GET /:observatory/validations                 # List validations
 GET /:observatory/humedales                   # List wetlands
+GET /:observatory/humedales/:id               # Get wetland
 GET /:observatory/hallazgos                   # List hallazgos
+GET /:observatory/hallazgos/:id               # Get hallazgo
+GET /:observatory/notihumedal                 # List articles
+GET /:observatory/cms/:pageSlug/:sectionKey   # Read CMS section
 
 # Geospatial Detector (admin)
 POST /:observatory/detector/run               # Run detection (OSM + Turf.js)
 POST /:observatory/detector/submit            # Submit detected candidates as prospects
+
+# AI Analysis
+POST /:observatory/ai/analyze-roof            # Analyze roof image via Gemini (base64 image → aptitude score)
+
+# Remote Sensing — Vegetation/water indices
+POST /:observatory/remote-sensing/indices     # Get NDVI/EVI/SAVI/NDWI/LST for coordinates (GEE → Sentinel Hub → fallback)
 ```
 
 ### Geospatial Detector Module
@@ -454,6 +506,31 @@ Detects candidates using OpenStreetMap data via the **Overpass API** (free, no k
 - **humedales**: Queries OSM water bodies, wetlands, waterways, wastewater plants, parks in bounding box → scores by feature type and area → wetland site identification
 
 The Overpass API queries use `[out:json]` format with configurable bounding box coordinates passed from the frontend. Results can be bulk-submitted as `ProspectSubmission` records with `source: 'ia_detector'`.
+
+### AI Roof Analysis Module
+**Directory:** `src/modules/observatory/ai/`
+**Dependencies:** `@google/generative-ai` (Gemini 2.0 Flash)
+
+Analyzes roof images (base64-encoded) to evaluate green roof installation aptitude. Returns structured JSON with:
+- `techoPlano`, `materialEstimado`, `obstrucciones` — physical assessment
+- `aptitudTechoVerde` (0-100) — overall suitability score
+- `tipoRecomendado` — extensivo/semi-intensivo/intensivo/no_apto
+- `confianza` / `porcentajeConfianza` — model confidence
+
+Requires `GEMINI_API_KEY` env var.
+
+### Remote Sensing Module
+**Directory:** `src/modules/observatory/remote-sensing/`
+**Cascade strategy:** Google Earth Engine → Sentinel Hub → local fallback (empty data)
+
+Retrieves vegetation/water spectral indices for a given coordinate:
+- **NDVI** — Normalized Difference Vegetation Index
+- **EVI** — Enhanced Vegetation Index
+- **SAVI** — Soil Adjusted Vegetation Index
+- **NDWI** — Normalized Difference Water Index
+- **LST** — Land Surface Temperature (Landsat only, not yet implemented)
+
+GEE uses Sentinel-2 SR Harmonized imagery via REST API with JWT auth from a service account. Sentinel Hub uses OAuth2 client credentials + Statistical API. Both return time-series data when available.
 
 ### Password Setup
 ```bash
