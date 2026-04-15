@@ -92,3 +92,34 @@ export const hallazgoSchema = Joi.object({
     costoEstimado: Joi.string().allow('').optional(),
   }).required(),
 });
+
+// ---------- Notihumedal ----------
+export const notihumedalSchema = Joi.object({
+  titulo: Joi.string().required(),
+  slug: Joi.string().allow('').optional(),
+  resumen: Joi.string().required(),
+  contenido: Joi.string().allow('').optional(),
+  css_content: Joi.string().allow('').optional(),
+  editor_data: Joi.object().allow(null).optional(),
+  autor: Joi.string().required(),
+  fecha: Joi.string().required(),
+  tags: Joi.array().items(Joi.string()).optional(),
+  imagen: Joi.string().allow(null, '').optional(),
+});
+
+// ---------- CMS Sections ----------
+export const cmsSectionSchema = Joi.object({
+  items: Joi.array().items(Joi.object()).required(),
+});
+
+// ---------- Admin Users ----------
+export const adminUserSchema = Joi.object({
+  email: Joi.string().email().required(),
+  name: Joi.string().required(),
+  password: Joi.string().min(6).optional(),
+  role: Joi.string().valid('superadmin', 'admin', 'editor').default('editor'),
+  permissions: Joi.array().items(Joi.string().valid(
+    'manage_users', 'manage_cms', 'manage_humedales',
+    'manage_hallazgos', 'manage_notihumedal', 'manage_prospectos'
+  )).optional(),
+});

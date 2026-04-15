@@ -10,6 +10,9 @@ import {
   validationRecordSchema,
   humedalSchema,
   hallazgoSchema,
+  notihumedalSchema,
+  cmsSectionSchema,
+  adminUserSchema,
 } from './observatory-admin.validation';
 import { asyncHandler } from '../../../utils/asyncHandler';
 
@@ -96,5 +99,40 @@ router.delete('/:observatory/admin/hallazgos/:id', auth, asyncHandler(c.deleteHa
 // Public read
 router.get('/:observatory/hallazgos', asyncHandler(c.listHallazgos));
 router.get('/:observatory/hallazgos/:id', asyncHandler(c.getHallazgo));
+
+// ══════════════════════════════════════
+//  Notihumedal (Articles)
+// ══════════════════════════════════════
+router.get('/:observatory/admin/notihumedal', auth, asyncHandler(c.listNotihumedal));
+router.get('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.getNotihumedal));
+router.post('/:observatory/admin/notihumedal', auth, validate(notihumedalSchema), asyncHandler(c.createNotihumedal));
+router.patch('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.updateNotihumedal));
+router.delete('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.deleteNotihumedal));
+
+// Notihumedal — Prospectos scrapeados
+router.get('/:observatory/admin/notihumedal/prospectos', auth, asyncHandler(c.listProspectosNoticias));
+router.post('/:observatory/admin/notihumedal/prospectos/:id/aprobar', auth, asyncHandler(c.aprobarProspectoNoticia));
+router.post('/:observatory/admin/notihumedal/prospectos/:id/rechazar', auth, validate(rejectProspectSchema), asyncHandler(c.rechazarProspectoNoticia));
+router.post('/:observatory/admin/notihumedal/scraper/run', auth, asyncHandler(c.runScraper));
+
+// Public read
+router.get('/:observatory/notihumedal', asyncHandler(c.listNotihumedal));
+
+// ══════════════════════════════════════
+//  CMS Sections
+// ══════════════════════════════════════
+router.get('/:observatory/admin/cms/:pageSlug', auth, asyncHandler(c.getCmsSections));
+router.put('/:observatory/admin/cms/:pageSlug/:sectionKey', auth, validate(cmsSectionSchema), asyncHandler(c.saveCmsSection));
+
+// Public read
+router.get('/:observatory/cms/:pageSlug/:sectionKey', asyncHandler(c.getCmsSections));
+
+// ══════════════════════════════════════
+//  Admin Users
+// ══════════════════════════════════════
+router.get('/:observatory/admin/usuarios', auth, asyncHandler(c.listAdminUsers));
+router.post('/:observatory/admin/usuarios', auth, validate(adminUserSchema), asyncHandler(c.createAdminUser));
+router.patch('/:observatory/admin/usuarios/:id', auth, asyncHandler(c.updateAdminUser));
+router.delete('/:observatory/admin/usuarios/:id', auth, asyncHandler(c.deleteAdminUser));
 
 export default router;

@@ -8,7 +8,12 @@ import { ObsCandidateRoof } from '../../../entities/observatory/CandidateRoof';
 import { ObsValidationRecord } from '../../../entities/observatory/ValidationRecord';
 import { ObsHumedal } from '../../../entities/observatory/Humedal';
 import { ObsHallazgo } from '../../../entities/observatory/Hallazgo';
+import { ObsNotihumedal } from '../../../entities/observatory/Notihumedal';
+import { ObsProspectoNoticia } from '../../../entities/observatory/ProspectoNoticia';
+import { ObsCmsSection } from '../../../entities/observatory/CmsSection';
+import { ObservatoryAdmin } from '../../../entities/observatory/ObservatoryAdmin';
 import { AppError } from '../../../middleware/errorHandler.middleware';
+import * as crypto from 'crypto';
 
 const prospectRepo = () => AppDataSource.getRepository(ProspectSubmission);
 const greenRoofRepo = () => AppDataSource.getRepository(ObsGreenRoof);
@@ -16,6 +21,10 @@ const candidateRepo = () => AppDataSource.getRepository(ObsCandidateRoof);
 const validationRepo = () => AppDataSource.getRepository(ObsValidationRecord);
 const humedalRepo = () => AppDataSource.getRepository(ObsHumedal);
 const hallazgoRepo = () => AppDataSource.getRepository(ObsHallazgo);
+const notiRepo = () => AppDataSource.getRepository(ObsNotihumedal);
+const prospectoNoticiaRepo = () => AppDataSource.getRepository(ObsProspectoNoticia);
+const cmsSectionRepo = () => AppDataSource.getRepository(ObsCmsSection);
+const adminUserRepo = () => AppDataSource.getRepository(ObservatoryAdmin);
 
 export class ObservatoryAdminService {
   // ══════════════════════════════════════
@@ -263,6 +272,144 @@ export class ObservatoryAdminService {
   async deleteHallazgo(id: number) {
     const r = await this.getHallazgo(id);
     await hallazgoRepo().remove(r);
+    return { deleted: true };
+  }
+
+  // ══════════════════════════════════════
+  //  Notihumedal (Articles)
+  // ══════════════════════════════════════
+
+  async listNotihumedal(page = 1, limit = 50) {
+    const [items, total] = await notiRepo().findAndCount({ order: { id: 'DESC' }, skip: (page - 1) * limit, take: limit });
+    return { items, pagination: { page, limit, total } };
+  }
+
+  async getNotihumedal(id: number) {
+    const r = await notiRepo().findOne({ where: { id } });
+    if (!r) throw new AppError('Articulo no encontrado', 404);
+    return r;
+  }
+
+  async createNotihumedal(data: Partial<ObsNotihumedal>) {
+    if (!data.slug && data.titulo) {
+      data.slug = data.titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    return notiRepo().save(notiRepo().create(data));
+  }
+
+  async updateNotihumedal(id: number, data: Partial<ObsNotihumedal>) {
+    const r = await this.getNotihumedal(id);
+    Object.assign(r, data);
+    return notiRepo().save(r);
+  }
+
+  async deleteNotihumedal(id: number) {
+    const r = await this.getNotihumedal(id);
+    await notiRepo().remove(r);
+    return { deleted: true };
+  }
+
+  // ══════════════════════════════════════
+  //  Prospectos de Noticias (Scraping)
+  // ══════════════════════════════════════
+
+  async listProspectosNoticias(status?: string, page = 1, limit = 50) {
+    const where: any = {};
+    if (status) where.estado = status;
+    const [items, total] = await prospectoNoticiaRepo().findAndCount({ where, order: { id: 'DESC' }, skip: (page - 1) * limit, take: limit });
+    return { items, pagination: { page, limit, total } };
+  }
+
+  async aprobarProspectoNoticia(id: number, adminId: string) {
+    const r = await prospectoNoticiaRepo().findOne({ where: { id } });
+    if (!r) throw new AppError('Prospecto no encontrado', 404);
+    if (r.estado !== 'pendiente') throw new AppError('Solo se pueden aprobar prospectos pendientes', 400);
+    r.estado = 'aprobado';
+    r.reviewedBy = adminId;
+    return prospectoNoticiaRepo().save(r);
+  }
+
+  async rechazarProspectoNoticia(id: number, adminId: string, notas: string) {
+    const r = await prospectoNoticiaRepo().findOne({ where: { id } });
+    if (!r) throw new AppError('Prospecto no encontrado', 404);
+    if (r.estado !== 'pendiente') throw new AppError('Solo se pueden rechazar prospectos pendientes', 400);
+    r.estado = 'rechazado';
+    r.notasRechazo = notas;
+    r.reviewedBy = adminId;
+    return prospectoNoticiaRepo().save(r);
+  }
+
+  async runScraper() {
+    // Placeholder: returns empty result. Real scraping runs via cron job.
+    return { message: 'Scraper ejecutado', nuevosProspectos: 0 };
+  }
+
+  // ══════════════════════════════════════
+  //  CMS Sections
+  // ══════════════════════════════════════
+
+  async getCmsSections(pageSlug: string) {
+    const sections = await cmsSectionRepo().find({ where: { pageSlug } });
+    const result: Record<string, any[]> = {};
+    for (const s of sections) result[s.sectionKey] = s.items;
+    return { sections: result };
+  }
+
+  async saveCmsSection(pageSlug: string, sectionKey: string, items: any[], adminId: string) {
+    let section = await cmsSectionRepo().findOne({ where: { pageSlug, sectionKey } });
+    if (section) {
+      section.items = items;
+      section.updatedBy = adminId;
+    } else {
+      section = cmsSectionRepo().create({ pageSlug, sectionKey, items, updatedBy: adminId });
+    }
+    return cmsSectionRepo().save(section);
+  }
+
+  // ══════════════════════════════════════
+  //  Admin Users
+  // ══════════════════════════════════════
+
+  async listAdminUsers(observatory: string) {
+    const admins = await adminUserRepo().find({ order: { createdAt: 'DESC' } });
+    // Filter by observatory access
+    return { items: admins.filter(a => a.observatories.includes(observatory)).map(a => ({
+      id: a.id, email: a.email, name: a.name,
+      role: (a as any).role || 'admin',
+      permissions: (a as any).permissions || [],
+      createdAt: a.createdAt, lastLogin: (a as any).lastLogin || null,
+    })) };
+  }
+
+  async createAdminUser(data: { email: string; name: string; password: string; role?: string; permissions?: string[] }, observatory: string) {
+    const bcrypt = require('bcryptjs');
+    const existing = await adminUserRepo().findOne({ where: { email: data.email } });
+    if (existing) throw new AppError('Ya existe un usuario con ese email', 400);
+    const admin = adminUserRepo().create({
+      email: data.email,
+      name: data.name,
+      passwordHash: await bcrypt.hash(data.password, 12),
+      observatories: [observatory],
+    });
+    return adminUserRepo().save(admin);
+  }
+
+  async updateAdminUser(id: string, data: Partial<{ name: string; email: string; password: string; role: string; permissions: string[] }>) {
+    const admin = await adminUserRepo().findOne({ where: { id } });
+    if (!admin) throw new AppError('Usuario no encontrado', 404);
+    if (data.name) admin.name = data.name;
+    if (data.email) admin.email = data.email;
+    if (data.password) {
+      const bcrypt = require('bcryptjs');
+      admin.passwordHash = await bcrypt.hash(data.password, 12);
+    }
+    return adminUserRepo().save(admin);
+  }
+
+  async deleteAdminUser(id: string) {
+    const admin = await adminUserRepo().findOne({ where: { id } });
+    if (!admin) throw new AppError('Usuario no encontrado', 404);
+    await adminUserRepo().remove(admin);
     return { deleted: true };
   }
 }

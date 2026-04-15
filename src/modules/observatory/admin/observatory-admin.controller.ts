@@ -173,4 +173,85 @@ export class ObservatoryAdminController {
     const result = await service.deleteHallazgo(Number(req.params.id));
     res.json({ success: true, data: result });
   }
+
+  // ──────────── Notihumedal ────────────
+  async listNotihumedal(req: Request, res: Response) {
+    const { page, limit } = req.query;
+    const result = await service.listNotihumedal(Number(page) || 1, Number(limit) || 50);
+    res.json({ success: true, ...result });
+  }
+
+  async getNotihumedal(req: Request, res: Response) {
+    const result = await service.getNotihumedal(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  async createNotihumedal(req: Request, res: Response) {
+    const result = await service.createNotihumedal(req.body);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async updateNotihumedal(req: Request, res: Response) {
+    const result = await service.updateNotihumedal(Number(req.params.id), req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteNotihumedal(req: Request, res: Response) {
+    const result = await service.deleteNotihumedal(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  // ──────────── Prospectos Noticias ────────────
+  async listProspectosNoticias(req: Request, res: Response) {
+    const { status, page, limit } = req.query;
+    const result = await service.listProspectosNoticias(status as string, Number(page) || 1, Number(limit) || 50);
+    res.json({ success: true, ...result });
+  }
+
+  async aprobarProspectoNoticia(req: Request, res: Response) {
+    const result = await service.aprobarProspectoNoticia(Number(req.params.id), req.user!.id);
+    res.json({ success: true, data: result });
+  }
+
+  async rechazarProspectoNoticia(req: Request, res: Response) {
+    const result = await service.rechazarProspectoNoticia(Number(req.params.id), req.user!.id, req.body.notas);
+    res.json({ success: true, data: result });
+  }
+
+  async runScraper(req: Request, res: Response) {
+    const result = await service.runScraper();
+    res.json({ success: true, data: result });
+  }
+
+  // ──────────── CMS Sections ────────────
+  async getCmsSections(req: Request, res: Response) {
+    const result = await service.getCmsSections(req.params.pageSlug);
+    res.json({ success: true, ...result });
+  }
+
+  async saveCmsSection(req: Request, res: Response) {
+    const result = await service.saveCmsSection(req.params.pageSlug, req.params.sectionKey, req.body.items, req.user!.id);
+    res.json({ success: true, data: result });
+  }
+
+  // ──────────── Admin Users ────────────
+  async listAdminUsers(req: Request, res: Response) {
+    const result = await service.listAdminUsers(req.params.observatory);
+    res.json({ success: true, ...result });
+  }
+
+  async createAdminUser(req: Request, res: Response) {
+    const result = await service.createAdminUser(req.body, req.params.observatory);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async updateAdminUser(req: Request, res: Response) {
+    const result = await service.updateAdminUser(req.params.id, req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteAdminUser(req: Request, res: Response) {
+    const result = await service.deleteAdminUser(req.params.id);
+    res.json({ success: true, data: result });
+  }
 }
