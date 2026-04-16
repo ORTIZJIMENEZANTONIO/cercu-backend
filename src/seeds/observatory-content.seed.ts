@@ -11,52 +11,13 @@ import { ProspectSubmission, ProspectStatus, ProspectSource } from '../entities/
 import * as crypto from 'crypto';
 
 export async function seedObservatoryContent() {
-  // ── Green Roofs ──
+  // ── Green Roofs (techos-verdes) ──
   const greenRoofRepo = AppDataSource.getRepository(ObsGreenRoof);
   if ((await greenRoofRepo.count()) === 0) {
     await greenRoofRepo.save(greenRoofRepo.create([
-      {
-        nombre: 'Techo Verde UNAM - Facultad de Ciencias',
-        alcaldia: 'Coyoacan',
-        direccion: 'Ciudad Universitaria, Circuito Exterior s/n',
-        tipoEdificio: 'educativo',
-        tipoTechoVerde: 'extensivo',
-        superficie: 450.0,
-        estado: 'activo',
-        lat: 19.3262,
-        lng: -99.1764,
-        imagen: null,
-        descripcion: 'Techo verde extensivo instalado como proyecto piloto de la Facultad de Ciencias. Vegetacion de sedum y pastos nativos.',
-        fechaRegistro: '2023-06-15',
-      },
-      {
-        nombre: 'Azotea Verde Reforma 222',
-        alcaldia: 'Cuauhtemoc',
-        direccion: 'Paseo de la Reforma 222',
-        tipoEdificio: 'comercial',
-        tipoTechoVerde: 'semi-intensivo',
-        superficie: 1200.0,
-        estado: 'activo',
-        lat: 19.4270,
-        lng: -99.1677,
-        imagen: null,
-        descripcion: 'Azotea verde semi-intensiva en edificio corporativo con area de descanso y huerto urbano.',
-        fechaRegistro: '2022-03-10',
-      },
-      {
-        nombre: 'Techo Verde Mercado de Coyoacan',
-        alcaldia: 'Coyoacan',
-        direccion: 'Calle Ignacio Allende s/n, Del Carmen',
-        tipoEdificio: 'comercial',
-        tipoTechoVerde: 'extensivo',
-        superficie: 320.0,
-        estado: 'mantenimiento',
-        lat: 19.3497,
-        lng: -99.1621,
-        imagen: null,
-        descripcion: 'Techo verde extensivo en el mercado municipal. Requiere mantenimiento periodico de impermeabilizacion.',
-        fechaRegistro: '2024-01-20',
-      },
+      { nombre: 'Techo Verde UNAM - Facultad de Ciencias', alcaldia: 'Coyoacan', direccion: 'Ciudad Universitaria, Circuito Exterior s/n', tipoEdificio: 'educativo', tipoTechoVerde: 'extensivo', superficie: 450.0, estado: 'activo', lat: 19.3262, lng: -99.1764, imagen: null, descripcion: 'Techo verde extensivo instalado como proyecto piloto de la Facultad de Ciencias.', fechaRegistro: '2023-06-15' },
+      { nombre: 'Azotea Verde Reforma 222', alcaldia: 'Cuauhtemoc', direccion: 'Paseo de la Reforma 222', tipoEdificio: 'comercial', tipoTechoVerde: 'semi-intensivo', superficie: 1200.0, estado: 'activo', lat: 19.4270, lng: -99.1677, imagen: null, descripcion: 'Azotea verde semi-intensiva en edificio corporativo con area de descanso y huerto urbano.', fechaRegistro: '2022-03-10' },
+      { nombre: 'Techo Verde Mercado de Coyoacan', alcaldia: 'Coyoacan', direccion: 'Calle Ignacio Allende s/n, Del Carmen', tipoEdificio: 'comercial', tipoTechoVerde: 'extensivo', superficie: 320.0, estado: 'mantenimiento', lat: 19.3497, lng: -99.1621, imagen: null, descripcion: 'Techo verde extensivo en el mercado municipal.', fechaRegistro: '2024-01-20' },
     ]));
     console.log('  ObsGreenRoof: 3 records created');
   }
@@ -65,36 +26,8 @@ export async function seedObservatoryContent() {
   const candidateRepo = AppDataSource.getRepository(ObsCandidateRoof);
   if ((await candidateRepo.count()) === 0) {
     await candidateRepo.save(candidateRepo.create([
-      {
-        nombre: 'Hospital General de Mexico',
-        alcaldia: 'Cuauhtemoc',
-        direccion: 'Dr. Balmis 148, Doctores',
-        tipoEdificio: 'salud',
-        superficie: 2800.0,
-        scoreAptitud: 82.5,
-        estatus: 'candidato',
-        lat: 19.4117,
-        lng: -99.1520,
-        imagen: null,
-        variables: { area: 0.9, rectangularidad: 0.85, niveles: 0.7, materialTecho: 0.9, pendiente: 0.95, obstrucciones: 0.6, accesibilidad: 0.8, cargaEstructural: 0.75 },
-        confianzaIA: 'alta',
-        fechaPriorizacion: '2025-01-15',
-      },
-      {
-        nombre: 'Palacio de Bellas Artes - Anexo',
-        alcaldia: 'Cuauhtemoc',
-        direccion: 'Av. Juarez s/n, Centro Historico',
-        tipoEdificio: 'cultural',
-        superficie: 950.0,
-        scoreAptitud: 45.0,
-        estatus: 'factibilidad_pendiente',
-        lat: 19.4352,
-        lng: -99.1413,
-        imagen: null,
-        variables: { area: 0.7, rectangularidad: 0.4, niveles: 0.5, materialTecho: 0.6, pendiente: 0.3, obstrucciones: 0.4, accesibilidad: 0.3, cargaEstructural: 0.5 },
-        confianzaIA: 'baja',
-        fechaPriorizacion: '2025-02-01',
-      },
+      { nombre: 'Hospital General de Mexico', alcaldia: 'Cuauhtemoc', direccion: 'Dr. Balmis 148, Doctores', tipoEdificio: 'salud', superficie: 2800.0, scoreAptitud: 82.5, estatus: 'candidato', lat: 19.4117, lng: -99.1520, imagen: null, variables: { area: 0.9, rectangularidad: 0.85, niveles: 0.7, materialTecho: 0.9, pendiente: 0.95, obstrucciones: 0.6, accesibilidad: 0.8, cargaEstructural: 0.75 }, confianzaIA: 'alta', fechaPriorizacion: '2025-01-15' },
+      { nombre: 'Palacio de Bellas Artes - Anexo', alcaldia: 'Cuauhtemoc', direccion: 'Av. Juarez s/n, Centro Historico', tipoEdificio: 'cultural', superficie: 950.0, scoreAptitud: 45.0, estatus: 'factibilidad_pendiente', lat: 19.4352, lng: -99.1413, imagen: null, variables: { area: 0.7, rectangularidad: 0.4, niveles: 0.5, materialTecho: 0.6, pendiente: 0.3, obstrucciones: 0.4, accesibilidad: 0.3, cargaEstructural: 0.5 }, confianzaIA: 'baja', fechaPriorizacion: '2025-02-01' },
     ]));
     console.log('  ObsCandidateRoof: 2 records created');
   }
@@ -103,213 +36,339 @@ export async function seedObservatoryContent() {
   const validationRepo = AppDataSource.getRepository(ObsValidationRecord);
   if ((await validationRepo.count()) === 0) {
     await validationRepo.save(validationRepo.create([
-      {
-        candidatoId: 1,
-        nombre: 'Hospital General de Mexico - Validacion Visual',
-        imagen: null,
-        prediccion: 'Techo plano de losa de concreto con pocas obstrucciones. Apto para TVLE.',
-        confianza: 'alta',
-        porcentajeConfianza: 88.5,
-        estado: 'confirmado',
-        revisadoPor: 'Admin Observatorios',
-        fechaRevision: new Date('2025-02-10'),
-      },
+      { candidatoId: 1, nombre: 'Hospital General de Mexico - Validacion Visual', imagen: null, prediccion: 'Techo plano de losa de concreto con pocas obstrucciones. Apto para TVLE.', confianza: 'alta', porcentajeConfianza: 88.5, estado: 'confirmado', revisadoPor: 'Admin Observatorios', fechaRevision: new Date('2025-02-10') },
     ]));
     console.log('  ObsValidationRecord: 1 record created');
   }
 
-  // ── Humedales ──
+  // ══════════════════════════════════════════════════════════════════════════
+  //  HUMEDALES — Inventario Fase 1 (Dominguez Solis, 2025, CIIEMAD-IPN)
+  //  + Luna-Pabello & Aburto-Castañeda (2014), TIP Rev., 17(1), 32-55
+  //  + Ramirez-Carrillo, Luna-Pabello & Arredondo-Figueroa (2009), RMIQ, 8(1)
+  // ══════════════════════════════════════════════════════════════════════════
   const humedalRepo = AppDataSource.getRepository(ObsHumedal);
   if ((await humedalRepo.count()) === 0) {
     await humedalRepo.save(humedalRepo.create([
       {
-        nombre: 'Humedal de Tratamiento San Luis Tlaxialtemalco',
-        alcaldia: 'Xochimilco',
-        ubicacion: 'Barrio San Luis Tlaxialtemalco, junto al canal de Cuemanco',
-        tipoHumedal: 'tratamiento_aguas',
-        funcionPrincipal: 'Tratamiento de aguas residuales mediante fitodepuracion con plantas nativas',
-        superficie: 3500.0,
-        volumen: 1200.0,
-        capacidadTratamiento: '50,000 litros/dia',
-        anioImplementacion: '2021',
-        vegetacion: ['Typha latifolia', 'Schoenoplectus americanus', 'Lemna minor'],
-        sustrato: 'Grava volcanica (tezontle) + arena',
-        usoAgua: 'Riego de chinampas y areas verdes',
-        serviciosEcosistemicos: ['tratamiento_agua', 'biodiversidad', 'regulacion_climatica', 'educacion'],
-        serviciosDescripcion: [
-          'Filtracion natural de contaminantes y nutrientes',
-          'Habitat para aves migratorias y anfibios',
-          'Reduccion de isla de calor urbana',
-          'Centro de educacion ambiental para la comunidad',
-        ],
-        monitoreo: 'Mediciones mensuales de DBO, SST, nitrogenos y fosforo. Monitoreo de avifauna trimestral.',
-        estado: 'activo',
-        lat: 19.2568,
-        lng: -99.0812,
-        imagen: null,
-      },
-      {
-        nombre: 'Humedal Artificial Parque Ecologico de Xochimilco',
-        alcaldia: 'Xochimilco',
-        ubicacion: 'Periferico Oriente 1, Cienagas de Xochimilco',
-        tipoHumedal: 'conservacion',
-        funcionPrincipal: 'Conservacion de habitat para ajolote mexicano y especies endemicas',
-        superficie: 8000.0,
-        volumen: 4500.0,
-        capacidadTratamiento: null,
-        anioImplementacion: '2019',
-        vegetacion: ['Nymphaea mexicana', 'Typha domingensis', 'Bacopa monnieri', 'Eichhornia crassipes'],
-        sustrato: 'Suelo lacustre natural + grava',
-        usoAgua: 'Recirculacion para conservacion de fauna acuatica',
-        serviciosEcosistemicos: ['biodiversidad', 'regulacion_hidrica', 'investigacion', 'recreacion'],
-        serviciosDescripcion: [
-          'Habitat critico para Ambystoma mexicanum (ajolote)',
-          'Regulacion del nivel freatico en zona chinampera',
-          'Estaciones de investigacion de la UNAM',
-          'Senderos educativos abiertos al publico',
-        ],
-        monitoreo: 'Conteo de ajolotes semestral. Calidad de agua mensual. Inventario floristico anual.',
-        estado: 'activo',
-        lat: 19.2700,
-        lng: -99.1040,
-        imagen: null,
-      },
-      {
-        nombre: 'Humedal Pluvial Bosque de Chapultepec',
+        nombre: 'Humedal Artificial Anfibium',
         alcaldia: 'Miguel Hidalgo',
-        ubicacion: 'Segunda seccion del Bosque de Chapultepec',
-        tipoHumedal: 'captacion_pluvial',
-        funcionPrincipal: 'Captacion y filtracion de agua pluvial para recarga de acuifero',
-        superficie: 1500.0,
-        volumen: 600.0,
-        capacidadTratamiento: '30,000 litros/dia (temporada de lluvias)',
+        ubicacion: 'Bosque de Chapultepec, 2a Seccion',
+        tipoHumedal: 'ha_fws',
+        tipoVegetacion: ['emergente'],
+        funcionPrincipal: 'Conservacion ex situ de anfibios (ajolotes)',
+        superficie: 1200,
         anioImplementacion: '2023',
-        vegetacion: ['Cyperus papyrus', 'Juncus effusus', 'Iris pseudacorus'],
-        sustrato: 'Grava volcanica + arena silica + composta',
-        usoAgua: 'Infiltracion al subsuelo y riego de areas verdes',
-        serviciosEcosistemicos: ['recarga_acuifero', 'control_inundaciones', 'recreacion', 'educacion'],
-        serviciosDescripcion: [
-          'Infiltracion estimada de 15,000 m3/anio al acuifero',
-          'Retencion de escorrentias durante lluvias intensas',
-          'Area de contemplacion y descanso',
-          'Senaletica informativa sobre ciclo del agua',
-        ],
-        monitoreo: 'Pluviometro automatizado. Mediciones de infiltracion trimestrales.',
+        vegetacion: ['Typha spp.', 'Carrizos', 'Sauces'],
+        sustrato: 'Grava y suelo natural',
+        usoAgua: 'Riego y limpieza interna',
+        serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'educacion_ambiental'],
+        serviciosDescripcion: ['Eliminacion de nitrogeno y patogenos', 'Habitat de ajolotes', 'Educacion ambiental'],
+        monitoreo: 'No se reportan datos cuantitativos publicos',
+        estado: 'activo',
+        lat: 19.4241, lng: -99.1896,
+        imagen: '/images/humedales/anfibium.jpg',
+        fuente: 'Inventario Fase 1 (Dominguez Solis, 2025)',
+        fuenteImagen: 'Gobierno de la CDMX — Zoologico de Chapultepec / Anfibium',
+      },
+      {
+        nombre: 'Humedal Artificial Parque Ecologico Cuitlahuac',
+        alcaldia: 'Iztapalapa',
+        ubicacion: 'Parque Ecologico Cuitlahuac, Iztapalapa',
+        tipoHumedal: 'ha_sfs_horizontal',
+        tipoVegetacion: ['emergente'],
+        funcionPrincipal: 'Tratamiento de aguas y rehabilitacion ecologica',
+        superficie: 8795,
+        anioImplementacion: '2021-2023',
+        vegetacion: ['Typha domingensis', 'Typha latifolia', 'Juncus effusus', 'Schoenoplectus spp.'],
+        sustrato: 'Grava, arena y suelo original',
+        usoAgua: 'Riego de areas verdes',
+        serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'captura_carbono'],
+        serviciosDescripcion: ['Purificacion del agua', 'Habitat de aves', 'Captura de CO2'],
+        monitoreo: 'Sin datos publicos detallados de eficiencia',
+        estado: 'activo',
+        lat: 19.3631, lng: -99.0444,
+        imagen: '/images/humedales/cuitlahuac.jpg',
+        fuente: 'Inventario Fase 1 (Dominguez Solis, 2025); Gobierno de la CDMX (2021)',
+        fuenteImagen: 'Gobierno de la CDMX — Secretaria de Obras',
+      },
+      {
+        nombre: 'Humedal Artificial Aragon — STHA (HAFSS + HAFS)',
+        alcaldia: 'Gustavo A. Madero',
+        ubicacion: 'Lago del Bosque de San Juan de Aragon, cuerpo sur',
+        tipoHumedal: 'ha_hibrido',
+        tipoVegetacion: ['emergente', 'sumergida', 'flotante'],
+        funcionPrincipal: 'Control de eutroficacion del lago (120,000 m3) mediante sistema combinado HAFSS (2,351 m2) + HAFS (5,734 m2) + sedimentador (44 m2)',
+        superficie: 8085,
+        volumen: 120000,
+        capacidadTratamiento: '250 m3/d (diseno); 175-260 m3/d segun epoca',
+        anioImplementacion: '2012',
+        vegetacion: ['Hidrofitas emergentes enraizadas', 'Hidrofitas subemergentes', 'Plantas de libre flotacion'],
+        sustrato: 'HAFSS: grava de origen igneo + gravilla de roca caliza. Impermeabilizacion con geomembrana',
+        usoAgua: 'Recirculacion al lago mayor del Bosque de Aragon',
+        serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'regulacion_termica', 'reduccion_lst', 'captura_carbono', 'educacion_ambiental', 'recreacion'],
+        serviciosDescripcion: ['Remocion del 80% de contaminantes, >90% coliformes fecales', 'Habitat para aves migratorias', 'Mitigacion de isla de calor', 'Reduccion de LST', 'Fijacion de carbono', 'Educacion ambiental e investigacion', 'Uso recreativo del lago'],
+        monitoreo: 'Eficiencia documentada: 80% contaminantes generales, 50% nitrogeno (HAFSS), 50% fosforo (HAFS), >90% coliformes. Cumple NOM-001 y NOM-003 SEMARNAT. Inaugurado 30 nov 2012. Vida util: ~25 anos. Fuente: Luna-Pabello & Aburto-Castaneda (2014), TIP Rev., 17(1), 32-55.',
+        estado: 'activo',
+        lat: 19.4606, lng: -99.0740,
+        imagen: '/images/humedales/aragon.jpg',
+        fuente: 'Luna-Pabello, V.M. y Aburto-Castaneda, S. (2014). TIP Rev. Esp. Ciencias Quimico-Biologicas, 17(1), 32-55. Facultad de Quimica, UNAM.',
+        fuenteImagen: 'Fundacion UNAM / Gaceta UNAM',
+      },
+      {
+        nombre: 'Segundo Humedal Artificial Aragon (HAFSS, diseno doble espiral)',
+        alcaldia: 'Gustavo A. Madero',
+        ubicacion: 'Bosque de San Juan de Aragon, zona sur',
+        tipoHumedal: 'ha_sfs_horizontal',
+        tipoVegetacion: ['emergente', 'flotante'],
+        funcionPrincipal: 'Tratamiento de agua del lago mediante HAFSS con diseno de doble espiral',
+        superficie: 3108,
+        capacidadTratamiento: '140 m3/d',
+        anioImplementacion: '2020 (ampliacion 2025)',
+        vegetacion: ['Tules', 'Lirios acuaticos', 'Lentejilla de agua (Lemna)'],
+        sustrato: 'Grava, filtro de agregados calcareos, tanque sedimentador y muro gavion filtrante',
+        usoAgua: 'Recirculacion al lago mayor (capacidad combinada con STHA: 390 m3/d)',
+        serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'regulacion_termica', 'captura_carbono'],
+        serviciosDescripcion: ['Remocion del 80% de contaminantes', 'Habitat de 50 spp aves acuaticas', 'Regulacion microclimatica', 'Captura de CO2'],
+        monitoreo: '50 spp aves acuaticas (vs 25 en 2009). 80% remocion contaminantes. Fuente: DGCS-UNAM (2020), Boletin 150; Fundacion UNAM (2020).',
         estado: 'en_expansion',
-        lat: 19.4186,
-        lng: -99.1980,
-        imagen: null,
+        lat: 19.4618, lng: -99.0734,
+        imagen: '/images/humedales/aragon.jpg',
+        fuente: 'GAIA — Facultad de Quimica, UNAM; Fundacion UNAM (2020); DGCS-UNAM, Boletin 150/2020.',
+        fuenteImagen: 'Fundacion UNAM (2020)',
+      },
+      {
+        nombre: 'Humedal Artificial Playa de Aves',
+        alcaldia: 'Gustavo A. Madero',
+        ubicacion: 'Bosque de Aragon, zona sur',
+        tipoHumedal: 'ha_fws',
+        tipoVegetacion: ['emergente'],
+        funcionPrincipal: 'Habitat de aves y recreacion ambiental',
+        superficie: 1100,
+        anioImplementacion: '2021',
+        vegetacion: ['Carrizos', 'Plantas emergentes'],
+        sustrato: 'Arena y grava',
+        usoAgua: 'Descarga al lago del bosque',
+        serviciosEcosistemicos: ['habitat_fauna', 'control_inundaciones', 'depuracion_agua'],
+        serviciosDescripcion: ['Habitat de aves', 'Control de inundaciones', 'Filtracion previa al lago'],
+        monitoreo: 'Se registran aves acuaticas y mejor filtracion',
+        estado: 'activo',
+        lat: 19.527, lng: -99.112,
+        imagen: '/images/humedales/playa-aves.jpg',
+        fuente: 'Gobierno de la CDMX (2021)',
+        fuenteImagen: 'Gobierno de la CDMX (2021)',
+      },
+      {
+        nombre: 'Humedal Artificial Cerro de la Estrella',
+        alcaldia: 'Iztapalapa',
+        ubicacion: 'Area Natural Protegida Cerro de la Estrella',
+        tipoHumedal: 'ha_fws',
+        tipoVegetacion: ['emergente'],
+        funcionPrincipal: 'Rehabilitacion ecologica y captacion pluvial',
+        anioImplementacion: '2022',
+        vegetacion: ['Tules', 'Plantas polinizadoras nativas'],
+        sustrato: 'Suelo natural y grava',
+        usoAgua: 'Mantenimiento del espejo de agua',
+        serviciosEcosistemicos: ['habitat_fauna', 'control_inundaciones', 'educacion_ambiental'],
+        serviciosDescripcion: ['Recuperacion de biodiversidad', 'Control de escorrentia', 'Educacion ambiental'],
+        monitoreo: 'Se reporta recuperacion de flora y fauna',
+        estado: 'activo',
+        lat: 19.331, lng: -99.107,
+        imagen: '/images/humedales/cerro-estrella.jpg',
+        fuente: 'Gobierno de la CDMX (2022)',
+        fuenteImagen: 'Gobierno de la CDMX (2022)',
+      },
+      {
+        nombre: 'Humedal Artificial Vivero San Luis Tlaxialtemalco',
+        alcaldia: 'Xochimilco',
+        ubicacion: 'Vivero San Luis Tlaxialtemalco, Xochimilco',
+        tipoHumedal: 'ha_fws',
+        tipoVegetacion: ['emergente', 'flotante', 'sumergida'],
+        funcionPrincipal: 'Conservacion, filtracion y produccion vegetal',
+        superficie: 48900,
+        volumen: 13646,
+        anioImplementacion: '2023',
+        vegetacion: ['Typha', 'Juncus', 'Nymphaea', 'Nymphoides'],
+        sustrato: 'Tierra natural y tezontle',
+        usoAgua: 'Riego y posible recarga acuifera',
+        serviciosEcosistemicos: ['banco_germoplasma', 'habitat_fauna', 'educacion_ambiental', 'recarga_acuiferos'],
+        serviciosDescripcion: ['Banco de germoplasma', 'Refugio de fauna', 'Educacion ambiental', 'Recarga de acuiferos'],
+        monitoreo: 'Se documenta produccion de plantas acuaticas nativas',
+        estado: 'activo',
+        lat: 19.284, lng: -99.093,
+        imagen: '/images/humedales/vivero-tlaxialtemalco.jpg',
+        fuente: 'Inventario Fase 1 (Dominguez Solis, 2025); La Cronica de Hoy (2023)',
+        fuenteImagen: 'La Cronica de Hoy / Gobierno de la CDMX (2023)',
+      },
+      {
+        nombre: 'Humedal Artificial CIBAC Cuemanco',
+        alcaldia: 'Xochimilco',
+        ubicacion: 'Centro de Investigaciones Acuicolas de Cuemanco (CIBAC), UAM Xochimilco, Canal de Cuemanco',
+        tipoHumedal: 'ha_sfs_vertical',
+        tipoVegetacion: ['emergente'],
+        funcionPrincipal: 'Tratamiento de agua del Canal de Cuemanco para acuicultura y proteccion de especies endemicas (ajolote)',
+        superficie: 55,
+        capacidadTratamiento: '4 m3/d (4 dosis de 1,000 L)',
+        anioImplementacion: '2007',
+        vegetacion: ['Arundo donax (carrizos)', 'Medicago sativa (alfalfa)', 'Zantedeschia aethiopica (alcatraces blancos)'],
+        sustrato: 'Grava silica en dos horizontes: principal 0.6 m (particula 1-2 mm) + secundario 0.1 m (particula 1.5-2 cm); filtro de pulimento con minerales calizos (1.8 m2)',
+        usoAgua: 'Acuicultura (cultivo de ajolote) y cultivos hidroponicos',
+        serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'educacion_ambiental'],
+        serviciosDescripcion: ['Remocion: 92% DQO, 85% N-NH4, 80% PO4 (12 meses)', 'Agua para conservacion del ajolote', 'Investigacion academica (UAM/UNAM)'],
+        monitoreo: 'Monitoreo mensual 12 meses (mayo 2007 - mayo 2008). DQO 92%, N-NH4 85%, PO4 80%, N-NO2 60%, N-NO3 85%. Cumple NOM-001-SEMARNAT-1996. Vida util: 31.4 anos (HA), 9.3 anos (FP). Fuente: Ramirez-Carrillo, Luna-Pabello & Arredondo-Figueroa (2009), Rev. Mex. Ing. Quim., 8(1), 93-99.',
+        estado: 'activo',
+        lat: 19.2825, lng: -99.0940,
+        imagen: '/images/humedales/cuemanco.jpg',
+        fuente: 'Ramirez-Carrillo, H.F., Luna-Pabello, V.M. y Arredondo-Figueroa, J.L. (2009). Rev. Mex. Ing. Quim., 8(1), 93-99.',
+        fuenteImagen: 'SEDEMA CDMX (2024)',
       },
     ]));
-    console.log('  ObsHumedal: 3 records created');
+    console.log('  ObsHumedal: 8 records created (Inventario Fase 1)');
   }
 
-  // ── Hallazgos ──
+  // ══════════════════════════════════════════════════════════════════════════
+  //  HALLAZGOS — Inventario Fase 1 (Dominguez Solis, 2025)
+  // ══════════════════════════════════════════════════════════════════════════
   const hallazgoRepo = AppDataSource.getRepository(ObsHallazgo);
   if ((await hallazgoRepo.count()) === 0) {
     await hallazgoRepo.save(hallazgoRepo.create([
       {
-        titulo: 'Deficit de humedales en zona oriente de CDMX',
-        descripcion: 'Las alcaldias Iztapalapa, Tlahuac y Iztacalco presentan la menor densidad de infraestructura verde hidrica en relacion a su poblacion. Iztapalapa tiene 0.02 m2 de humedal por habitante vs el promedio de 0.15 m2 en la ciudad.',
-        evidencia: ['Mapa de densidad de humedales por alcaldia', 'Datos censales INEGI 2020'],
+        titulo: 'Ausencia de monitoreo estandarizado',
+        descripcion: 'La mayoria de los humedales inventariados carecen de datos cuantitativos de desempeno. Solo 2 de 7 registros presentan informacion parcial de eficiencia.',
+        evidencia: [
+          'Solo 2-3 de los 8 humedales cuentan con datos cuantitativos parciales de remocion.',
+          'La mayoria indica "No se reportan datos de monitoreo cuantitativo".',
+          'No existe un protocolo comun de medicion entre alcaldias.',
+          'Las fuentes publicas reportan capacidades de diseno, pero no resultados operativos.',
+        ],
         impacto: 'critico',
         recomendacion: {
-          titulo: 'Plan de Humedales para la Zona Oriente',
-          descripcion: 'Implementar al menos 5 humedales de tratamiento en parques publicos de Iztapalapa y Tlahuac aprovechando infraestructura existente.',
-          acciones: [
-            'Identificar 10 sitios candidatos en parques publicos >5000 m2',
-            'Realizar estudios de factibilidad hidrologica',
-            'Disenar humedales modulares replicables',
-            'Gestionar presupuesto participativo 2026',
-          ],
-          responsables: ['SEDEMA', 'SACMEX', 'Alcaldias Iztapalapa y Tlahuac'],
-          plazo: '18 meses',
-          costoEstimado: '$45,000,000 MXN',
+          titulo: 'Implementar protocolo de monitoreo estandarizado',
+          descripcion: 'Establecer un protocolo unificado con parametros fisicoquimicos y microbiologicos clave.',
+          acciones: ['Definir parametros minimos: DQO, nitrogeno total, fosforo total, coliformes fecales y caudal.', 'Establecer frecuencia trimestral de muestreo.', 'Crear plataforma de datos abiertos.', 'Capacitar personal operativo en tecnicas de muestreo.'],
+          responsables: ['CIIEMAD-IPN', 'CONAGUA'],
+          plazo: 'corto',
+          costoEstimado: '$500,000 - $1,500,000 MXN por humedal',
         },
       },
       {
-        titulo: 'Alto potencial de techos verdes en edificios gubernamentales',
-        descripcion: 'El 73% de los edificios gubernamentales de la alcaldia Cuauhtemoc cuentan con techos planos de losa de concreto con superficie promedio de 800 m2, ideales para instalacion de TVLE.',
-        evidencia: ['Analisis de imagenes satelitales', 'Registro de inmuebles federales'],
+        titulo: 'Concentracion territorial desigual',
+        descripcion: 'Los 8 humedales se ubican en solo 5 de las 16 alcaldias. Las 11 restantes no cuentan con ningun humedal artificial inventariado.',
+        evidencia: [
+          'Solo 5 de 16 alcaldias (31%) cuentan con al menos un humedal.',
+          '11 alcaldias no tienen ningun humedal artificial.',
+          'Iztapalapa y Gustavo A. Madero concentran multiples instalaciones.',
+          'Alcaldias con alta necesidad hidrica (Iztacalco, Venustiano Carranza, Tlahuac) carecen de humedales.',
+        ],
         impacto: 'alto',
         recomendacion: {
-          titulo: 'Programa Piloto de Techos Verdes Gubernamentales',
-          descripcion: 'Iniciar con 10 edificios gubernamentales como proyecto demostrativo para escalar a nivel ciudad.',
-          acciones: [
-            'Seleccionar 10 edificios con mejor score de aptitud',
-            'Realizar estudios estructurales',
-            'Licitar instalacion de TVLE',
-            'Implementar monitoreo con sensores IoT',
-          ],
-          responsables: ['SEDEMA', 'INDAABIN', 'Alcaldia Cuauhtemoc'],
-          plazo: '12 meses',
-          costoEstimado: '$18,000,000 MXN',
+          titulo: 'Priorizar expansion con indice de necesidad territorial',
+          descripcion: 'Disenar estrategia de expansion que priorice alcaldias sin cobertura usando indice compuesto de necesidad.',
+          acciones: ['Construir indice por alcaldia (estres hidrico, inundaciones, islas de calor, densidad).', 'Priorizar Iztacalco, Venustiano Carranza y Tlahuac.', 'Elaborar estudios de factibilidad para al menos 3 nuevos humedales.', 'Vincular con programas de desarrollo urbano.'],
+          responsables: ['Gobierno de la CDMX', 'Alcaldias prioritarias'],
+          plazo: 'mediano',
+        },
+      },
+      {
+        titulo: 'Datos de eficiencia limitados a estudios piloto',
+        descripcion: 'Las tasas de remocion reportadas (50-95%) provienen de estudios piloto academicos, no de mediciones in situ de los humedales operativos.',
+        evidencia: [
+          'Los estudios de la UNAM y UAM reportan eficiencias de 50-95% en condiciones experimentales.',
+          'Dichas mediciones corresponden a pilotos academicos, no a los humedales del inventario.',
+          'No existen datos publicados de eficiencia in situ para los 8 humedales inventariados.',
+          'Las condiciones reales pueden reducir significativamente la eficiencia.',
+        ],
+        impacto: 'alto',
+        recomendacion: {
+          titulo: 'Establecer convenios universidad-gobierno para monitoreo in situ',
+          descripcion: 'Formalizar alianzas con instituciones academicas para mediciones de eficiencia directamente en los humedales operativos.',
+          acciones: ['Firmar convenios con UNAM, UAM, UACh e IPN para monitoreo in situ.', 'Disenar campanas de muestreo estacional (minimo 4/ano).', 'Comparar resultados de campo con estudios piloto.', 'Publicar reportes tecnicos anuales.'],
+          responsables: ['IPN', 'UNAM'],
+          plazo: 'mediano',
+          costoEstimado: '$2,000,000 - $5,000,000 MXN (programa integral)',
+        },
+      },
+      {
+        titulo: 'Ventaja economica no cuantificada formalmente',
+        descripcion: 'Los humedales presentan costos de $0.50-$2.00 MXN/m3 vs $5-15 MXN/m3 de plantas convencionales (Nava-Rojas et al., 2023; CONAGUA), pero no existe analisis costo-beneficio formal.',
+        evidencia: [
+          'Costo estimado: ~$0.50-2.00 MXN/m3 vs $5-15 MXN/m3 convencional (Nava-Rojas et al., 2023; CONAGUA).',
+          'Los 8 humedales podrian procesar ~2,890 m3/dia en conjunto.',
+          'Ningun documento publico presenta analisis formal de costo-beneficio.',
+          'La ausencia de argumentos economicos dificulta justificar nuevas inversiones.',
+        ],
+        impacto: 'alto',
+        recomendacion: {
+          titulo: 'Realizar analisis costo-beneficio formal',
+          descripcion: 'Elaborar estudio que compare humedales con tratamientos convencionales documentando la ventaja economica.',
+          acciones: ['Desarrollar analisis de costos de inversion, operacion y externalidades.', 'Cuantificar servicios ecosistemicos co-producidos.', 'Documentar para tomadores de decision.', 'Presentar ante comisiones del Congreso de la CDMX.'],
+          responsables: ['CONAGUA', 'Academia (IPN, UNAM)'],
+          plazo: 'corto',
         },
       },
     ]));
-    console.log('  ObsHallazgo: 2 records created');
+    console.log('  ObsHallazgo: 4 records created (Inventario Fase 1)');
   }
 
-  // ── Notihumedal ──
+  // ══════════════════════════════════════════════════════════════════════════
+  //  NOTIHUMEDAL — Articulos con imagenes y fuentes
+  // ══════════════════════════════════════════════════════════════════════════
   const notiRepo = AppDataSource.getRepository(ObsNotihumedal);
   if ((await notiRepo.count()) === 0) {
     await notiRepo.save(notiRepo.create([
       {
-        titulo: 'CDMX inaugura nuevo humedal artificial en Xochimilco',
-        slug: 'cdmx-inaugura-nuevo-humedal-artificial-en-xochimilco',
-        resumen: 'La Secretaria del Medio Ambiente inauguro un humedal de tratamiento de 2,000 m2 que procesara aguas residuales para riego de chinampas.',
-        contenido: '<p>El nuevo humedal artificial, ubicado en el barrio de San Gregorio Atlapulco, representa un avance significativo en la restauracion del sistema hidrologico de Xochimilco.</p>',
-        css_content: null,
-        editor_data: null,
-        autor: 'Redaccion Observatorio',
-        fecha: '2025-03-15',
-        tags: ['xochimilco', 'humedal artificial', 'tratamiento de aguas'],
-        imagen: null,
+        titulo: 'Inauguran segundo humedal artificial en el Bosque de Aragon',
+        slug: 'segundo-humedal-aragon-2020',
+        resumen: 'La Facultad de Quimica de la UNAM, a traves del grupo GAIA, inauguro el segundo humedal artificial de flujo subsuperficial en el Bosque de San Juan de Aragon con capacidad de 140 m3/dia.',
+        contenido: '<p>El Grupo Academico Interdisciplinario Ambiental (GAIA) de la Facultad de Quimica, UNAM, inauguro un segundo sistema de humedales artificiales en el Bosque de San Juan de Aragon (DGCS-UNAM, Boletin 150/2020).</p><p>El nuevo sistema cuenta con una superficie de 3,108 m2 y una capacidad de tratamiento de 140,000 litros diarios. Con este segundo humedal, el Bosque de Aragon se consolida como el sitio con mayor infraestructura de humedales artificiales en la CDMX, con capacidad combinada de 390 m3/dia.</p>',
+        autor: 'Observatorio de Humedales Artificiales CDMX',
+        fecha: '2020-11-15',
+        tags: ['Aragon', 'GAIA', 'UNAM', 'flujo subsuperficial'],
+        imagen: '/images/humedales/aragon.jpg',
+        fuenteImagen: 'Gaceta UNAM / Facultad de Quimica, UNAM',
       },
       {
-        titulo: 'Estudio revela beneficios de humedales urbanos en regulacion termica',
-        slug: 'estudio-revela-beneficios-humedales-urbanos-regulacion-termica',
-        resumen: 'Investigacion de la UNAM demuestra que los humedales artificiales reducen hasta 3 grados la temperatura en su entorno inmediato.',
-        contenido: '<p>El estudio, publicado en la revista Urban Ecosystems, analizo datos de 15 humedales urbanos en la zona metropolitana durante dos anios.</p>',
-        css_content: null,
-        editor_data: null,
-        autor: 'Dr. Maria Garcia - UNAM',
-        fecha: '2025-02-28',
-        tags: ['investigacion', 'isla de calor', 'UNAM'],
-        imagen: null,
+        titulo: 'Humedales de la CDMX: generadores de agua y refugio de biodiversidad',
+        slug: 'humedales-cdmx-politica-publica',
+        resumen: 'La Ciudad de Mexico alberga humedales que registran 397 especies de aves y capturan hasta 10 veces mas carbono que las selvas tropicales, segun la CONABIO.',
+        contenido: '<p>Con motivo del Dia Mundial de los Humedales, diversas instituciones presentaron un balance del estado de los humedales en la Ciudad de Mexico.</p><p>Entre los humedales artificiales documentados se encuentran el STHA del Bosque de Aragon (Luna-Pabello & Aburto-Castaneda, 2014) y el Parque Ecologico Cuitlahuac.</p>',
+        autor: 'Observatorio de Humedales Artificiales CDMX',
+        fecha: '2023-02-02',
+        tags: ['CONABIO', 'politica publica', 'biodiversidad'],
+        imagen: '/images/humedales/playa-aves.jpg',
+        fuenteImagen: 'Gobierno de la CDMX',
+      },
+      {
+        titulo: 'Articulo cientifico: STHA del Bosque de Aragon — 30 anos de investigacion',
+        slug: 'luna-pabello-stha-aragon-2014',
+        resumen: 'Luna-Pabello y Aburto-Castaneda publican en TIP Revista el diseno y resultados del STHA del lago del Bosque de Aragon.',
+        contenido: '<p>En la revista TIP Rev. Esp. Ciencias Quimico-Biologicas, 17(1), 32-55, los investigadores de la Facultad de Quimica de la UNAM documentan el STHA.</p><p>El sistema combina HAFSS (2,351 m2) con HAFS (5,734 m2) para controlar la eutroficacion del lago. Remocion: 80% contaminantes, >90% coliformes fecales.</p>',
+        autor: 'Luna-Pabello, V.M. / GAIA-UNAM',
+        fecha: '2014-06-01',
+        tags: ['investigacion', 'UNAM', 'Aragon', 'HAFSS', 'HAFS'],
+        imagen: '/images/humedales/aragon.jpg',
+        fuenteImagen: 'Gaceta UNAM / GAIA — Facultad de Quimica, UNAM',
       },
     ]));
-    console.log('  ObsNotihumedal: 2 records created');
+    console.log('  ObsNotihumedal: 3 records created');
   }
 
   // ── Prospectos de Noticias ──
   const prospectoRepo = AppDataSource.getRepository(ObsProspectoNoticia);
   if ((await prospectoRepo.count()) === 0) {
-    const url1 = 'https://ejemplo.com/nota-humedales-cdmx-2025';
-    const url2 = 'https://ejemplo.com/techos-verdes-norma-ambiental';
+    const url1 = 'https://www.fundacionunam.org.mx/donde-paso/unam-inaugura-humedal-artificial-en-el-bosque-de-san-juan-de-aragon/';
     await prospectoRepo.save(prospectoRepo.create([
       {
-        titulo: 'Gobierno anuncia inversiones en infraestructura verde hidrica',
-        resumen: 'Se destinaran 200 millones de pesos a la construccion de humedales artificiales en la zona oriente de CDMX.',
+        titulo: 'UNAM inaugura humedal artificial en el Bosque de San Juan de Aragon',
+        resumen: 'La Facultad de Quimica de la UNAM inauguro un segundo sistema de humedales artificiales.',
         url: url1,
-        fuente: 'ejemplo.com',
-        fecha: '2025-04-01',
-        estado: 'pendiente',
+        fuente: 'Fundacion UNAM',
+        fecha: '2020-11-15',
+        estado: 'aprobado',
         urlHash: crypto.createHash('sha256').update(url1.toLowerCase().trim()).digest('hex'),
         reviewedBy: null,
       },
-      {
-        titulo: 'Nueva norma ambiental para techos verdes en CDMX',
-        resumen: 'La NADF propone hacer obligatoria la instalacion de techos verdes en nuevas construcciones mayores a 1000 m2.',
-        url: url2,
-        fuente: 'ejemplo.com',
-        fecha: '2025-03-20',
-        estado: 'pendiente',
-        urlHash: crypto.createHash('sha256').update(url2.toLowerCase().trim()).digest('hex'),
-        reviewedBy: null,
-      },
     ]));
-    console.log('  ObsProspectoNoticia: 2 records created');
+    console.log('  ObsProspectoNoticia: 1 record created');
   }
 
   // ── CMS Sections ──
@@ -320,49 +379,43 @@ export async function seedObservatoryContent() {
         pageSlug: 'home',
         sectionKey: 'features',
         items: [
-          { icon: 'leaf', title: 'Monitoreo en tiempo real', description: 'Seguimiento de indices de vegetacion y calidad del agua mediante sensores remotos.' },
-          { icon: 'map', title: 'Mapa interactivo', description: 'Visualiza todos los humedales y techos verdes registrados en la CDMX.' },
-          { icon: 'chart', title: 'Analisis con IA', description: 'Evaluacion automatizada de aptitud de techos y sitios candidatos.' },
+          { title: 'Inventario geoespacial', description: 'Localizacion y caracterizacion de humedales artificiales en la Ciudad de Mexico.', to: '/inventario', bg: 'bg-primary-50', iconColor: 'text-primary', icon: 'lucide:map-pin' },
+          { title: 'Servicios ecosistemicos', description: 'Analisis de beneficios ambientales: tratamiento de agua, habitat para fauna, captura de carbono.', to: '/analisis/indicadores', bg: 'bg-eco/10', iconColor: 'text-eco', icon: 'lucide:droplets' },
+          { title: 'Metodologia cientifica', description: 'Sistematizacion basada en criterios tecnicos: clasificacion del HA por sistema de flujo (FWS, SFS).', to: '/sobre#metodologia', bg: 'bg-secondary/10', iconColor: 'text-secondary', icon: 'lucide:microscope' },
         ],
         updatedBy: 'seed',
       },
       {
         pageSlug: 'home',
-        sectionKey: 'stats',
+        sectionKey: 'tipologias',
         items: [
-          { label: 'Humedales registrados', value: '45' },
-          { label: 'Techos verdes activos', value: '128' },
-          { label: 'Superficie total (m2)', value: '85,000' },
-          { label: 'Alcaldias cubiertas', value: '12' },
+          { title: 'HA flujo superficial (FWS)', description: 'El agua fluye visiblemente sobre el sustrato, similar a un humedal natural.', examples: 'Anfibium, Playa de Aves, Vivero Tlaxialtemalco, Cerro de la Estrella', badge: 'FWS', badgeClass: 'badge-secondary' },
+          { title: 'HA flujo subsuperficial (SFS)', description: 'El agua fluye a traves del sustrato sin ser visible en la superficie.', examples: 'Parque Ecologico Cuitlahuac, Segundo Aragon, CIBAC Cuemanco', badge: 'HSSF', badgeClass: 'badge-primary' },
+          { title: 'HA hibrido (FWS + SFS)', description: 'Combina modulos de flujo superficial y subsuperficial en serie.', examples: 'Aragon STHA (HAFSS + HAFS)', badge: 'Hibrido', badgeClass: 'badge-eco' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        pageSlug: 'sobre',
+        sectionKey: 'criterios',
+        items: [
+          { title: 'Ubicacion y ano', description: 'Coordenadas geograficas y ano de implementacion.', icon: '📍' },
+          { title: 'Tipo de humedal artificial', description: 'Clasificacion por sistema de flujo: HA de flujo superficial (FWS), HA de flujo subsuperficial horizontal (HSSF) o vertical (VSSF), y sistemas hibridos.', icon: '🏷️' },
+          { title: 'Caracteristicas tecnicas', description: 'Vegetacion, sustrato, volumen o superficie documentada.', icon: '🔬' },
+          { title: 'Uso del agua tratada', description: 'Destino del agua procesada: riego, recirculacion, infiltracion.', icon: '💧' },
+          { title: 'Servicios ecosistemicos', description: 'Beneficios ambientales: depuracion, habitat, captura de carbono.', icon: '🌿' },
+          { title: 'Resultados o monitoreo', description: 'Datos cuantitativos o cualitativos de desempeno.', icon: '📊' },
         ],
         updatedBy: 'seed',
       },
     ]));
-    console.log('  ObsCmsSection: 2 records created');
+    console.log('  ObsCmsSection: 3 records created');
   }
 
   // ── Prospect Submissions ──
   const prospectRepo = AppDataSource.getRepository(ProspectSubmission);
   if ((await prospectRepo.count()) === 0) {
     await prospectRepo.save(prospectRepo.create([
-      {
-        observatory: 'techos-verdes',
-        status: ProspectStatus.PENDIENTE,
-        data: {
-          nombre: 'Edificio Secretaria de Economia',
-          alcaldia: 'Cuauhtemoc',
-          lat: 19.4295,
-          lng: -99.1579,
-          superficie: 1500,
-          tipoEdificio: 'gubernamental',
-          scoreAptitud: 78,
-        },
-        source: ProspectSource.IA_DETECTOR,
-        confianzaDetector: 'alta',
-        notasAdmin: null,
-        reviewedBy: null,
-        reviewedAt: null,
-      },
       {
         observatory: 'humedales',
         status: ProspectStatus.PENDIENTE,
@@ -372,8 +425,8 @@ export async function seedObservatoryContent() {
           lat: 19.3020,
           lng: -99.1805,
           superficie: 5000,
-          tipoHumedal: 'captacion_pluvial',
-          descripcion: 'Area con potencial para humedal de captacion pluvial aprovechando escorrentia del cerro.',
+          tipoHumedal: 'ha_fws',
+          funcionPrincipal: 'Captacion pluvial aprovechando escorrentia del cerro',
         },
         source: ProspectSource.MANUAL,
         confianzaDetector: null,
@@ -382,7 +435,7 @@ export async function seedObservatoryContent() {
         reviewedAt: null,
       },
     ]));
-    console.log('  ProspectSubmission: 2 records created');
+    console.log('  ProspectSubmission: 1 record created');
   }
 
   console.log('Observatory content seed complete');

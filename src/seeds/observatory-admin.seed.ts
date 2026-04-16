@@ -20,10 +20,13 @@ export async function seedObservatoryAdmin() {
   const existing = await repo.findOne({ where: { email: adminEmail } });
 
   if (existing) {
+    // Update password and name but preserve role/permissions if already set
     existing.passwordHash = passwordHash;
     existing.name = adminName;
     existing.observatories = ['techos-verdes', 'humedales'];
     existing.isActive = true;
+    if (!existing.role) existing.role = 'superadmin';
+    if (!existing.permissions) existing.permissions = ['manage_users', 'manage_cms', 'manage_humedales', 'manage_hallazgos', 'manage_notihumedal', 'manage_prospectos'];
     await repo.save(existing);
 
   } else {
@@ -33,6 +36,8 @@ export async function seedObservatoryAdmin() {
       passwordHash,
       name: adminName,
       observatories: ['techos-verdes', 'humedales'],
+      role: 'superadmin',
+      permissions: ['manage_users', 'manage_cms', 'manage_humedales', 'manage_hallazgos', 'manage_notihumedal', 'manage_prospectos'],
       isActive: true,
     });
     await repo.save(admin);

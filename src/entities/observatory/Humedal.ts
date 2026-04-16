@@ -21,10 +21,19 @@ export class ObsHumedal {
   ubicacion!: string | null;
 
   @Column({ type: 'varchar', length: 50 })
-  tipoHumedal!: string; // conservacion | tratamiento_aguas | recreativo | captacion_pluvial | restauracion_hidrologica
+  tipoHumedal!: string; // ha_fws | ha_sfs_horizontal | ha_sfs_vertical | ha_hibrido
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'text', nullable: true })
   funcionPrincipal!: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  fuente!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  fuenteImagen!: string | null;
+
+  @Column({ type: 'json', nullable: true })
+  tipoVegetacion!: string[] | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   superficie!: number | null;
