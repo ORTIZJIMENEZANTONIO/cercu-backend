@@ -447,11 +447,11 @@ POST /:observatory/prospectos                 # Submit new prospect
 /:observatory/admin/candidates[/:id]          # Candidate roof CRUD
 /:observatory/admin/validations[/:id]         # Validation record CRUD
 # Humedales:
-/:observatory/admin/humedales[/:id]           # Wetland CRUD
+/:observatory/admin/humedales[/:id]           # Wetland CRUD  ?search&alcaldia&tipoHumedal&estado
 /:observatory/admin/hallazgos[/:id]           # Hallazgo CRUD
 
 # Notihumedal — Articles (admin CRUD)
-GET  /:observatory/admin/notihumedal          # List articles
+GET  /:observatory/admin/notihumedal          # List articles  ?search&autor&tag&fechaDesde&fechaHasta
 GET  /:observatory/admin/notihumedal/:id      # Get article
 POST /:observatory/admin/notihumedal          # Create article (auto-generates slug)
 PATCH /:observatory/admin/notihumedal/:id     # Update article
@@ -479,11 +479,11 @@ GET /:observatory/green-roofs/:id             # Get green roof
 GET /:observatory/candidates                  # List candidates
 GET /:observatory/candidates/:id              # Get candidate
 GET /:observatory/validations                 # List validations
-GET /:observatory/humedales                   # List wetlands
+GET /:observatory/humedales                   # List wetlands  ?search&alcaldia&tipoHumedal&estado
 GET /:observatory/humedales/:id               # Get wetland
 GET /:observatory/hallazgos                   # List hallazgos
 GET /:observatory/hallazgos/:id               # Get hallazgo
-GET /:observatory/notihumedal                 # List articles
+GET /:observatory/notihumedal                 # List articles  ?search&autor&tag&fechaDesde&fechaHasta
 GET /:observatory/cms/:pageSlug/:sectionKey   # Read CMS section
 
 # Geospatial Detector (admin)

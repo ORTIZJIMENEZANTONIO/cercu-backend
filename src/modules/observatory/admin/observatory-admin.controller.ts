@@ -122,8 +122,17 @@ export class ObservatoryAdminController {
 
   // ──────────── Humedales ────────────
   async listHumedales(req: Request, res: Response) {
-    const { page, limit } = req.query;
-    const result = await service.listHumedales(Number(page) || 1, Number(limit) || 50);
+    const { page, limit, search, alcaldia, tipoHumedal, estado } = req.query;
+    const result = await service.listHumedales(
+      Number(page) || 1,
+      Number(limit) || 50,
+      {
+        search: search as string,
+        alcaldia: alcaldia as string,
+        tipoHumedal: tipoHumedal as string,
+        estado: estado as string,
+      },
+    );
     res.json({ success: true, ...result });
   }
 
@@ -176,8 +185,18 @@ export class ObservatoryAdminController {
 
   // ──────────── Notihumedal ────────────
   async listNotihumedal(req: Request, res: Response) {
-    const { page, limit } = req.query;
-    const result = await service.listNotihumedal(Number(page) || 1, Number(limit) || 50);
+    const { page, limit, search, autor, tag, fechaDesde, fechaHasta } = req.query;
+    const result = await service.listNotihumedal(
+      Number(page) || 1,
+      Number(limit) || 50,
+      {
+        search: search as string,
+        autor: autor as string,
+        tag: tag as string,
+        fechaDesde: fechaDesde as string,
+        fechaHasta: fechaHasta as string,
+      },
+    );
     res.json({ success: true, ...result });
   }
 

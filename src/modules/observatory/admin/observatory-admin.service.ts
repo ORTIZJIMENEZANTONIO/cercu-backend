@@ -247,12 +247,31 @@ export class ObservatoryAdminService {
   //  Humedales
   // ══════════════════════════════════════
 
-  async listHumedales(page = 1, limit = 50) {
-    const [items, total] = await humedalRepo().findAndCount({
-      order: { id: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listHumedales(
+    page = 1,
+    limit = 50,
+    filters: { search?: string; alcaldia?: string; tipoHumedal?: string; estado?: string } = {},
+  ) {
+    const qb = humedalRepo().createQueryBuilder("h");
+
+    if (filters.search) {
+      qb.andWhere("h.nombre LIKE :search", { search: `%${filters.search}%` });
+    }
+    if (filters.alcaldia) {
+      qb.andWhere("h.alcaldia = :alcaldia", { alcaldia: filters.alcaldia });
+    }
+    if (filters.tipoHumedal) {
+      qb.andWhere("h.tipoHumedal = :tipoHumedal", { tipoHumedal: filters.tipoHumedal });
+    }
+    if (filters.estado) {
+      qb.andWhere("h.estado = :estado", { estado: filters.estado });
+    }
+
+    qb.orderBy("h.id", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 
@@ -317,12 +336,35 @@ export class ObservatoryAdminService {
   //  Notihumedal (Articles)
   // ══════════════════════════════════════
 
-  async listNotihumedal(page = 1, limit = 50) {
-    const [items, total] = await notiRepo().findAndCount({
-      order: { id: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listNotihumedal(
+    page = 1,
+    limit = 50,
+    filters: { search?: string; autor?: string; tag?: string; fechaDesde?: string; fechaHasta?: string } = {},
+  ) {
+    const qb = notiRepo().createQueryBuilder("n");
+
+    if (filters.search) {
+      qb.andWhere("n.titulo LIKE :search", { search: `%${filters.search}%` });
+    }
+    if (filters.autor) {
+      qb.andWhere("n.autor = :autor", { autor: filters.autor });
+    }
+    if (filters.tag) {
+      qb.andWhere("JSON_CONTAINS(n.tags, :tag)", { tag: JSON.stringify(filters.tag) });
+    }
+    if (filters.fechaDesde) {
+      qb.andWhere("n.fecha >= :fechaDesde", { fechaDesde: filters.fechaDesde });
+    }
+    if (filters.fechaHasta) {
+      qb.andWhere("n.fecha <= :fechaHasta", { fechaHasta: filters.fechaHasta });
+    }
+
+    qb.orderBy("n.fecha", "DESC")
+      .addOrderBy("n.id", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 
