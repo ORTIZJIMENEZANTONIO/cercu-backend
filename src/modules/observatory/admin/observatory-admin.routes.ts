@@ -45,8 +45,8 @@ router.post('/:observatory/admin/green-roofs', auth, validate(greenRoofSchema), 
 router.patch('/:observatory/admin/green-roofs/:id', auth, asyncHandler(c.updateGreenRoof));
 router.delete('/:observatory/admin/green-roofs/:id', auth, asyncHandler(c.deleteGreenRoof));
 
-// Public read
-router.get('/:observatory/green-roofs', asyncHandler(c.listGreenRoofs));
+// Public read (only visible + not archived)
+router.get('/:observatory/green-roofs', asyncHandler(c.listGreenRoofsPublic));
 router.get('/:observatory/green-roofs/:id', asyncHandler(c.getGreenRoof));
 
 // ══════════════════════════════════════
@@ -58,8 +58,8 @@ router.post('/:observatory/admin/candidates', auth, validate(candidateRoofSchema
 router.patch('/:observatory/admin/candidates/:id', auth, asyncHandler(c.updateCandidate));
 router.delete('/:observatory/admin/candidates/:id', auth, asyncHandler(c.deleteCandidate));
 
-// Public read
-router.get('/:observatory/candidates', asyncHandler(c.listCandidates));
+// Public read (only visible + not archived)
+router.get('/:observatory/candidates', asyncHandler(c.listCandidatesPublic));
 router.get('/:observatory/candidates/:id', asyncHandler(c.getCandidate));
 
 // ══════════════════════════════════════
@@ -71,8 +71,8 @@ router.post('/:observatory/admin/validations', auth, validate(validationRecordSc
 router.patch('/:observatory/admin/validations/:id', auth, asyncHandler(c.updateValidation));
 router.delete('/:observatory/admin/validations/:id', auth, asyncHandler(c.deleteValidation));
 
-// Public read
-router.get('/:observatory/validations', asyncHandler(c.listValidations));
+// Public read (only visible + not archived)
+router.get('/:observatory/validations', asyncHandler(c.listValidationsPublic));
 
 // ══════════════════════════════════════
 //  Humedales

@@ -47,6 +47,12 @@ export class ObsGreenRoof {
   @Column({ type: 'date', nullable: true })
   fechaRegistro!: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -4,6 +4,9 @@ import {
   hallazgoSchema,
   submitProspectSchema,
   rejectProspectSchema,
+  greenRoofSchema,
+  candidateRoofSchema,
+  validationRecordSchema,
 } from '../../src/modules/observatory/admin/observatory-admin.validation'
 
 describe('Validation Schemas — Humedal', () => {
@@ -203,5 +206,145 @@ describe('Validation Schemas — Prospecto', () => {
   it('reject schema accepts notas', () => {
     const { error } = rejectProspectSchema.validate({ notas: 'No relevante' })
     expect(error).toBeUndefined()
+  })
+})
+
+// ═══════════════════════════════════════════
+// Green Roof Schema
+// ═══════════════════════════════════════════
+describe('Validation Schemas — Green Roof', () => {
+  const validRoof = {
+    nombre: 'Techo Verde Test',
+    alcaldia: 'Coyoacán',
+    tipoEdificio: 'hospital',
+    tipoTechoVerde: 'extensivo',
+    superficie: 500,
+    lat: 19.35,
+    lng: -99.16,
+  }
+
+  it('accepts valid green roof', () => {
+    const { error } = greenRoofSchema.validate(validRoof)
+    expect(error).toBeUndefined()
+  })
+
+  it('rejects missing nombre', () => {
+    const { error } = greenRoofSchema.validate({ ...validRoof, nombre: undefined })
+    expect(error).toBeDefined()
+  })
+
+  it('accepts all valid tipoTechoVerde', () => {
+    ['extensivo', 'intensivo', 'semi-intensivo'].forEach(tipo => {
+      const { error } = greenRoofSchema.validate({ ...validRoof, tipoTechoVerde: tipo })
+      expect(error).toBeUndefined()
+    })
+  })
+
+  it('rejects invalid tipoTechoVerde', () => {
+    const { error } = greenRoofSchema.validate({ ...validRoof, tipoTechoVerde: 'invalid' })
+    expect(error).toBeDefined()
+  })
+
+  it('defaults estado to nuevo', () => {
+    const { value } = greenRoofSchema.validate(validRoof)
+    expect(value.estado).toBe('nuevo')
+  })
+
+  it('defaults visible to true', () => {
+    const { value } = greenRoofSchema.validate(validRoof)
+    expect(value.visible).toBe(true)
+  })
+
+  it('defaults archivado to false', () => {
+    const { value } = greenRoofSchema.validate(validRoof)
+    expect(value.archivado).toBe(false)
+  })
+
+  it('accepts visible=false', () => {
+    const { error, value } = greenRoofSchema.validate({ ...validRoof, visible: false })
+    expect(error).toBeUndefined()
+    expect(value.visible).toBe(false)
+  })
+})
+
+// ═══════════════════════════════════════════
+// Candidate Roof Schema
+// ═══════════════════════════════════════════
+describe('Validation Schemas — Candidate Roof', () => {
+  const validCandidate = {
+    nombre: 'Candidato Test',
+    alcaldia: 'Miguel Hidalgo',
+    tipoEdificio: 'oficinas',
+    superficie: 800,
+    scoreAptitud: 75,
+    lat: 19.43,
+    lng: -99.19,
+  }
+
+  it('accepts valid candidate', () => {
+    const { error } = candidateRoofSchema.validate(validCandidate)
+    expect(error).toBeUndefined()
+  })
+
+  it('rejects score out of range', () => {
+    const { error } = candidateRoofSchema.validate({ ...validCandidate, scoreAptitud: 150 })
+    expect(error).toBeDefined()
+  })
+
+  it('accepts all valid estatus', () => {
+    ['candidato', 'validado_visualmente', 'factibilidad_pendiente', 'piloto', 'implementado'].forEach(estatus => {
+      const { error } = candidateRoofSchema.validate({ ...validCandidate, estatus })
+      expect(error).toBeUndefined()
+    })
+  })
+
+  it('defaults visible to true and archivado to false', () => {
+    const { value } = candidateRoofSchema.validate(validCandidate)
+    expect(value.visible).toBe(true)
+    expect(value.archivado).toBe(false)
+  })
+})
+
+// ═══════════════════════════════════════════
+// Validation Record Schema
+// ═══════════════════════════════════════════
+describe('Validation Schemas — Validation Record', () => {
+  const validRecord = {
+    nombre: 'Hospital General',
+  }
+
+  it('accepts valid record', () => {
+    const { error } = validationRecordSchema.validate(validRecord)
+    expect(error).toBeUndefined()
+  })
+
+  it('rejects missing nombre', () => {
+    const { error } = validationRecordSchema.validate({})
+    expect(error).toBeDefined()
+  })
+
+  it('accepts all valid estado values', () => {
+    ['pendiente', 'confirmado', 'rechazado', 'indeterminado', 'pendiente_reconciliacion'].forEach(estado => {
+      const { error } = validationRecordSchema.validate({ ...validRecord, estado })
+      expect(error).toBeUndefined()
+    })
+  })
+
+  it('accepts all valid confianza values', () => {
+    ['alta', 'media', 'baja'].forEach(confianza => {
+      const { error } = validationRecordSchema.validate({ ...validRecord, confianza })
+      expect(error).toBeUndefined()
+    })
+  })
+
+  it('defaults visible to true and archivado to false', () => {
+    const { value } = validationRecordSchema.validate(validRecord)
+    expect(value.visible).toBe(true)
+    expect(value.archivado).toBe(false)
+  })
+
+  it('defaults estado to pendiente', () => {
+    const { value } = validationRecordSchema.validate(validRecord)
+    expect(value.estado).toBe('pendiente')
   })
 })

@@ -142,12 +142,26 @@ export class ObservatoryAdminService {
   //  Green Roofs (techos-verdes)
   // ══════════════════════════════════════
 
-  async listGreenRoofs(page = 1, limit = 50) {
-    const [items, total] = await greenRoofRepo().findAndCount({
-      order: { id: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listGreenRoofs(
+    page = 1,
+    limit = 50,
+    filters: { search?: string; alcaldia?: string; tipoEdificio?: string; estado?: string; visible?: string; archivado?: string; publicOnly?: boolean } = {},
+  ) {
+    const qb = greenRoofRepo().createQueryBuilder("g");
+    if (filters.publicOnly) {
+      qb.andWhere("g.visible = :vis", { vis: true });
+      qb.andWhere("g.archivado = :arch", { arch: false });
+    }
+    if (filters.search) qb.andWhere("g.nombre LIKE :search", { search: `%${filters.search}%` });
+    if (filters.alcaldia) qb.andWhere("g.alcaldia = :alcaldia", { alcaldia: filters.alcaldia });
+    if (filters.tipoEdificio) qb.andWhere("g.tipoEdificio = :tipoEdificio", { tipoEdificio: filters.tipoEdificio });
+    if (filters.estado) qb.andWhere("g.estado = :estado", { estado: filters.estado });
+    if (filters.visible === 'true') qb.andWhere("g.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("g.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("g.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("g.archivado = :arch", { arch: false });
+    qb.orderBy("g.id", "DESC").skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 
@@ -177,12 +191,26 @@ export class ObservatoryAdminService {
   //  Candidate Roofs (techos-verdes)
   // ══════════════════════════════════════
 
-  async listCandidates(page = 1, limit = 50) {
-    const [items, total] = await candidateRepo().findAndCount({
-      order: { scoreAptitud: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listCandidates(
+    page = 1,
+    limit = 50,
+    filters: { search?: string; alcaldia?: string; tipoEdificio?: string; estatus?: string; visible?: string; archivado?: string; publicOnly?: boolean } = {},
+  ) {
+    const qb = candidateRepo().createQueryBuilder("c");
+    if (filters.publicOnly) {
+      qb.andWhere("c.visible = :vis", { vis: true });
+      qb.andWhere("c.archivado = :arch", { arch: false });
+    }
+    if (filters.search) qb.andWhere("c.nombre LIKE :search", { search: `%${filters.search}%` });
+    if (filters.alcaldia) qb.andWhere("c.alcaldia = :alcaldia", { alcaldia: filters.alcaldia });
+    if (filters.tipoEdificio) qb.andWhere("c.tipoEdificio = :tipoEdificio", { tipoEdificio: filters.tipoEdificio });
+    if (filters.estatus) qb.andWhere("c.estatus = :estatus", { estatus: filters.estatus });
+    if (filters.visible === 'true') qb.andWhere("c.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("c.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("c.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("c.archivado = :arch", { arch: false });
+    qb.orderBy("c.scoreAptitud", "DESC").skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 
@@ -212,12 +240,25 @@ export class ObservatoryAdminService {
   //  Validation Records (techos-verdes)
   // ══════════════════════════════════════
 
-  async listValidations(page = 1, limit = 50) {
-    const [items, total] = await validationRepo().findAndCount({
-      order: { id: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listValidations(
+    page = 1,
+    limit = 50,
+    filters: { search?: string; estado?: string; confianza?: string; visible?: string; archivado?: string; publicOnly?: boolean } = {},
+  ) {
+    const qb = validationRepo().createQueryBuilder("v");
+    if (filters.publicOnly) {
+      qb.andWhere("v.visible = :vis", { vis: true });
+      qb.andWhere("v.archivado = :arch", { arch: false });
+    }
+    if (filters.search) qb.andWhere("v.nombre LIKE :search", { search: `%${filters.search}%` });
+    if (filters.estado) qb.andWhere("v.estado = :estado", { estado: filters.estado });
+    if (filters.confianza) qb.andWhere("v.confianza = :confianza", { confianza: filters.confianza });
+    if (filters.visible === 'true') qb.andWhere("v.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("v.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("v.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("v.archivado = :arch", { arch: false });
+    qb.orderBy("v.id", "DESC").skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 

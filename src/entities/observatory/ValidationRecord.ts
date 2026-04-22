@@ -38,6 +38,12 @@ export class ObsValidationRecord {
   @Column({ type: 'datetime', nullable: true })
   fechaRevision!: Date | null;
 
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -24,6 +24,8 @@ export const greenRoofSchema = Joi.object({
   lng: Joi.number().min(-180).max(180).required(),
   imagen: Joi.string().allow(null, '').optional(),
   descripcion: Joi.string().allow('').optional(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- Techos Verdes: Candidates ----------
@@ -40,6 +42,8 @@ export const candidateRoofSchema = Joi.object({
   imagen: Joi.string().allow(null, '').optional(),
   variables: Joi.object().optional(),
   confianzaIA: Joi.string().valid('alta', 'media', 'baja').optional(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- Techos Verdes: Validations ----------
@@ -52,6 +56,8 @@ export const validationRecordSchema = Joi.object({
   porcentajeConfianza: Joi.number().min(0).max(100).optional(),
   estado: Joi.string().valid('pendiente', 'confirmado', 'rechazado', 'indeterminado', 'pendiente_reconciliacion').default('pendiente'),
   revisadoPor: Joi.string().allow(null, '').optional(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- Humedales ----------

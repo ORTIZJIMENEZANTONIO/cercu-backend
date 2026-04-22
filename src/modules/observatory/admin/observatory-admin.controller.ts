@@ -41,8 +41,19 @@ export class ObservatoryAdminController {
 
   // ──────────── Green Roofs ────────────
   async listGreenRoofs(req: Request, res: Response) {
-    const { page, limit } = req.query;
-    const result = await service.listGreenRoofs(Number(page) || 1, Number(limit) || 50);
+    const { page, limit, search, alcaldia, tipoEdificio, estado, visible, archivado } = req.query;
+    const result = await service.listGreenRoofs(Number(page) || 1, Number(limit) || 50, {
+      search: search as string, alcaldia: alcaldia as string, tipoEdificio: tipoEdificio as string,
+      estado: estado as string, visible: visible as string, archivado: archivado as string,
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async listGreenRoofsPublic(req: Request, res: Response) {
+    const { page, limit, search, alcaldia } = req.query;
+    const result = await service.listGreenRoofs(Number(page) || 1, Number(limit) || 50, {
+      search: search as string, alcaldia: alcaldia as string, publicOnly: true,
+    });
     res.json({ success: true, ...result });
   }
 
@@ -68,8 +79,19 @@ export class ObservatoryAdminController {
 
   // ──────────── Candidates ────────────
   async listCandidates(req: Request, res: Response) {
-    const { page, limit } = req.query;
-    const result = await service.listCandidates(Number(page) || 1, Number(limit) || 50);
+    const { page, limit, search, alcaldia, tipoEdificio, estatus, visible, archivado } = req.query;
+    const result = await service.listCandidates(Number(page) || 1, Number(limit) || 50, {
+      search: search as string, alcaldia: alcaldia as string, tipoEdificio: tipoEdificio as string,
+      estatus: estatus as string, visible: visible as string, archivado: archivado as string,
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async listCandidatesPublic(req: Request, res: Response) {
+    const { page, limit, search, alcaldia } = req.query;
+    const result = await service.listCandidates(Number(page) || 1, Number(limit) || 50, {
+      search: search as string, alcaldia: alcaldia as string, publicOnly: true,
+    });
     res.json({ success: true, ...result });
   }
 
@@ -95,8 +117,17 @@ export class ObservatoryAdminController {
 
   // ──────────── Validations ────────────
   async listValidations(req: Request, res: Response) {
+    const { page, limit, search, estado, confianza, visible, archivado } = req.query;
+    const result = await service.listValidations(Number(page) || 1, Number(limit) || 50, {
+      search: search as string, estado: estado as string, confianza: confianza as string,
+      visible: visible as string, archivado: archivado as string,
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async listValidationsPublic(req: Request, res: Response) {
     const { page, limit } = req.query;
-    const result = await service.listValidations(Number(page) || 1, Number(limit) || 50);
+    const result = await service.listValidations(Number(page) || 1, Number(limit) || 50, { publicOnly: true });
     res.json({ success: true, ...result });
   }
 

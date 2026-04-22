@@ -50,6 +50,12 @@ export class ObsCandidateRoof {
   @Column({ type: 'date', nullable: true })
   fechaPriorizacion!: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
