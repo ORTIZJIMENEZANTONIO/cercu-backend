@@ -44,6 +44,18 @@ export class ObsNotihumedal {
   @Column({ type: 'varchar', length: 255, nullable: true })
   fuenteImagen!: string | null;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  url!: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  fuente!: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

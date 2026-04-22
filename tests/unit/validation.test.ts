@@ -10,7 +10,7 @@ describe('Validation Schemas — Humedal', () => {
   const validHumedal = {
     nombre: 'Humedal Artificial Test',
     alcaldia: 'Iztapalapa',
-    tipoHumedal: 'tratamiento_aguas',
+    tipoHumedal: 'ha_fws',
     funcionPrincipal: 'Tratamiento de agua',
     anioImplementacion: '2024',
     lat: 19.36,
@@ -40,7 +40,7 @@ describe('Validation Schemas — Humedal', () => {
   })
 
   it('accepts all valid tipoHumedal values', () => {
-    const types = ['conservacion', 'tratamiento_aguas', 'recreativo', 'captacion_pluvial', 'restauracion_hidrologica']
+    const types = ['ha_fws', 'ha_sfs_horizontal', 'ha_sfs_vertical', 'ha_hibrido']
     types.forEach(tipo => {
       const { error } = humedalSchema.validate({ ...validHumedal, tipoHumedal: tipo })
       expect(error).toBeUndefined()

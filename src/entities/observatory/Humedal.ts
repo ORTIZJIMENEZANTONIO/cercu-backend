@@ -44,7 +44,7 @@ export class ObsHumedal {
   @Column({ type: 'varchar', length: 255, nullable: true })
   capacidadTratamiento!: string | null;
 
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 50 })
   anioImplementacion!: string;
 
   @Column({ type: 'json', nullable: true })
@@ -76,6 +76,12 @@ export class ObsHumedal {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   imagen!: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;

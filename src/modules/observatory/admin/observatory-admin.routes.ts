@@ -83,8 +83,8 @@ router.post('/:observatory/admin/humedales', auth, validate(humedalSchema), asyn
 router.patch('/:observatory/admin/humedales/:id', auth, asyncHandler(c.updateHumedal));
 router.delete('/:observatory/admin/humedales/:id', auth, asyncHandler(c.deleteHumedal));
 
-// Public read
-router.get('/:observatory/humedales', asyncHandler(c.listHumedales));
+// Public read (only visible + not archived)
+router.get('/:observatory/humedales', asyncHandler(c.listHumedalesPublic));
 router.get('/:observatory/humedales/:id', asyncHandler(c.getHumedal));
 
 // ══════════════════════════════════════
@@ -96,8 +96,8 @@ router.post('/:observatory/admin/hallazgos', auth, validate(hallazgoSchema), asy
 router.patch('/:observatory/admin/hallazgos/:id', auth, asyncHandler(c.updateHallazgo));
 router.delete('/:observatory/admin/hallazgos/:id', auth, asyncHandler(c.deleteHallazgo));
 
-// Public read
-router.get('/:observatory/hallazgos', asyncHandler(c.listHallazgos));
+// Public read (only visible + not archived)
+router.get('/:observatory/hallazgos', asyncHandler(c.listHallazgosPublic));
 router.get('/:observatory/hallazgos/:id', asyncHandler(c.getHallazgo));
 
 // ══════════════════════════════════════
@@ -116,8 +116,8 @@ router.post('/:observatory/admin/notihumedal', auth, validate(notihumedalSchema)
 router.patch('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.updateNotihumedal));
 router.delete('/:observatory/admin/notihumedal/:id', auth, asyncHandler(c.deleteNotihumedal));
 
-// Public read
-router.get('/:observatory/notihumedal', asyncHandler(c.listNotihumedal));
+// Public read (only visible + not archived)
+router.get('/:observatory/notihumedal', asyncHandler(c.listNotihumedalPublic));
 
 // ══════════════════════════════════════
 //  CMS Sections

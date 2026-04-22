@@ -250,10 +250,14 @@ export class ObservatoryAdminService {
   async listHumedales(
     page = 1,
     limit = 50,
-    filters: { search?: string; alcaldia?: string; tipoHumedal?: string; estado?: string } = {},
+    filters: { search?: string; alcaldia?: string; tipoHumedal?: string; estado?: string; visible?: string; archivado?: string; publicOnly?: boolean } = {},
   ) {
     const qb = humedalRepo().createQueryBuilder("h");
 
+    if (filters.publicOnly) {
+      qb.andWhere("h.visible = :vis", { vis: true });
+      qb.andWhere("h.archivado = :arch", { arch: false });
+    }
     if (filters.search) {
       qb.andWhere("h.nombre LIKE :search", { search: `%${filters.search}%` });
     }
@@ -266,6 +270,10 @@ export class ObservatoryAdminService {
     if (filters.estado) {
       qb.andWhere("h.estado = :estado", { estado: filters.estado });
     }
+    if (filters.visible === 'true') qb.andWhere("h.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("h.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("h.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("h.archivado = :arch", { arch: false });
 
     qb.orderBy("h.id", "DESC")
       .skip((page - 1) * limit)
@@ -301,12 +309,30 @@ export class ObservatoryAdminService {
   //  Hallazgos
   // ══════════════════════════════════════
 
-  async listHallazgos(page = 1, limit = 50) {
-    const [items, total] = await hallazgoRepo().findAndCount({
-      order: { id: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async listHallazgos(
+    page = 1,
+    limit = 50,
+    filters: { visible?: string; archivado?: string; impacto?: string; publicOnly?: boolean } = {},
+  ) {
+    const qb = hallazgoRepo().createQueryBuilder("h");
+
+    if (filters.publicOnly) {
+      qb.andWhere("h.visible = :vis", { vis: true });
+      qb.andWhere("h.archivado = :arch", { arch: false });
+    }
+    if (filters.impacto) {
+      qb.andWhere("h.impacto = :impacto", { impacto: filters.impacto });
+    }
+    if (filters.visible === 'true') qb.andWhere("h.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("h.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("h.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("h.archivado = :arch", { arch: false });
+
+    qb.orderBy("h.id", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, pagination: { page, limit, total } };
   }
 
@@ -339,10 +365,14 @@ export class ObservatoryAdminService {
   async listNotihumedal(
     page = 1,
     limit = 50,
-    filters: { search?: string; autor?: string; tag?: string; fechaDesde?: string; fechaHasta?: string } = {},
+    filters: { search?: string; autor?: string; tag?: string; fechaDesde?: string; fechaHasta?: string; visible?: string; archivado?: string; publicOnly?: boolean } = {},
   ) {
     const qb = notiRepo().createQueryBuilder("n");
 
+    if (filters.publicOnly) {
+      qb.andWhere("n.visible = :vis", { vis: true });
+      qb.andWhere("n.archivado = :arch", { arch: false });
+    }
     if (filters.search) {
       qb.andWhere("n.titulo LIKE :search", { search: `%${filters.search}%` });
     }
@@ -358,6 +388,10 @@ export class ObservatoryAdminService {
     if (filters.fechaHasta) {
       qb.andWhere("n.fecha <= :fechaHasta", { fechaHasta: filters.fechaHasta });
     }
+    if (filters.visible === 'true') qb.andWhere("n.visible = :vis", { vis: true });
+    if (filters.visible === 'false') qb.andWhere("n.visible = :vis", { vis: false });
+    if (filters.archivado === 'true') qb.andWhere("n.archivado = :arch", { arch: true });
+    if (filters.archivado === 'false') qb.andWhere("n.archivado = :arch", { arch: false });
 
     qb.orderBy("n.fecha", "DESC")
       .addOrderBy("n.id", "DESC")

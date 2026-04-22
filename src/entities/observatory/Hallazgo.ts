@@ -33,6 +33,12 @@ export class ObsHallazgo {
     costoEstimado?: string;
   };
 
+  @Column({ type: 'boolean', default: true })
+  visible!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  archivado!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

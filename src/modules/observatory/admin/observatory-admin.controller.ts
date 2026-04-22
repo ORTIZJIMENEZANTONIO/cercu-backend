@@ -122,7 +122,7 @@ export class ObservatoryAdminController {
 
   // ──────────── Humedales ────────────
   async listHumedales(req: Request, res: Response) {
-    const { page, limit, search, alcaldia, tipoHumedal, estado } = req.query;
+    const { page, limit, search, alcaldia, tipoHumedal, estado, visible, archivado } = req.query;
     const result = await service.listHumedales(
       Number(page) || 1,
       Number(limit) || 50,
@@ -131,7 +131,19 @@ export class ObservatoryAdminController {
         alcaldia: alcaldia as string,
         tipoHumedal: tipoHumedal as string,
         estado: estado as string,
+        visible: visible as string,
+        archivado: archivado as string,
       },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async listHumedalesPublic(req: Request, res: Response) {
+    const { page, limit, search, alcaldia, tipoHumedal, estado } = req.query;
+    const result = await service.listHumedales(
+      Number(page) || 1,
+      Number(limit) || 50,
+      { search: search as string, alcaldia: alcaldia as string, tipoHumedal: tipoHumedal as string, estado: estado as string, publicOnly: true },
     );
     res.json({ success: true, ...result });
   }
@@ -158,8 +170,18 @@ export class ObservatoryAdminController {
 
   // ──────────── Hallazgos ────────────
   async listHallazgos(req: Request, res: Response) {
+    const { page, limit, visible, archivado, impacto } = req.query;
+    const result = await service.listHallazgos(Number(page) || 1, Number(limit) || 50, {
+      visible: visible as string,
+      archivado: archivado as string,
+      impacto: impacto as string,
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async listHallazgosPublic(req: Request, res: Response) {
     const { page, limit } = req.query;
-    const result = await service.listHallazgos(Number(page) || 1, Number(limit) || 50);
+    const result = await service.listHallazgos(Number(page) || 1, Number(limit) || 50, { publicOnly: true });
     res.json({ success: true, ...result });
   }
 
@@ -185,7 +207,7 @@ export class ObservatoryAdminController {
 
   // ──────────── Notihumedal ────────────
   async listNotihumedal(req: Request, res: Response) {
-    const { page, limit, search, autor, tag, fechaDesde, fechaHasta } = req.query;
+    const { page, limit, search, autor, tag, fechaDesde, fechaHasta, visible, archivado } = req.query;
     const result = await service.listNotihumedal(
       Number(page) || 1,
       Number(limit) || 50,
@@ -195,7 +217,19 @@ export class ObservatoryAdminController {
         tag: tag as string,
         fechaDesde: fechaDesde as string,
         fechaHasta: fechaHasta as string,
+        visible: visible as string,
+        archivado: archivado as string,
       },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async listNotihumedalPublic(req: Request, res: Response) {
+    const { page, limit, search, tag } = req.query;
+    const result = await service.listNotihumedal(
+      Number(page) || 1,
+      Number(limit) || 50,
+      { search: search as string, tag: tag as string, publicOnly: true },
     );
     res.json({ success: true, ...result });
   }

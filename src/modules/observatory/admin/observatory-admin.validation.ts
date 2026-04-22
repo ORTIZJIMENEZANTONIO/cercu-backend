@@ -59,13 +59,14 @@ export const humedalSchema = Joi.object({
   nombre: Joi.string().required(),
   alcaldia: Joi.string().required(),
   ubicacion: Joi.string().allow('').optional(),
-  tipoHumedal: Joi.string().valid('conservacion', 'tratamiento_aguas', 'recreativo', 'captacion_pluvial', 'restauracion_hidrologica').required(),
+  tipoHumedal: Joi.string().valid('ha_fws', 'ha_sfs_horizontal', 'ha_sfs_vertical', 'ha_hibrido').required(),
   funcionPrincipal: Joi.string().required(),
   superficie: Joi.number().positive().optional(),
   volumen: Joi.number().positive().optional(),
   capacidadTratamiento: Joi.string().allow('').optional(),
   anioImplementacion: Joi.string().required(),
   vegetacion: Joi.array().items(Joi.string()).optional(),
+  tipoVegetacion: Joi.array().items(Joi.string().valid('flotante', 'emergente', 'sumergida')).optional(),
   sustrato: Joi.string().allow('').optional(),
   usoAgua: Joi.string().allow('').optional(),
   serviciosEcosistemicos: Joi.array().items(Joi.string()).optional(),
@@ -75,6 +76,10 @@ export const humedalSchema = Joi.object({
   lat: Joi.number().min(-90).max(90).required(),
   lng: Joi.number().min(-180).max(180).required(),
   imagen: Joi.string().allow(null, '').optional(),
+  fuente: Joi.string().allow(null, '').optional(),
+  fuenteImagen: Joi.string().allow(null, '').optional(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- Hallazgos ----------
@@ -91,6 +96,8 @@ export const hallazgoSchema = Joi.object({
     plazo: Joi.string().valid('corto', 'mediano', 'largo').required(),
     costoEstimado: Joi.string().allow('').optional(),
   }).required(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- Notihumedal ----------
@@ -105,6 +112,11 @@ export const notihumedalSchema = Joi.object({
   fecha: Joi.string().required(),
   tags: Joi.array().items(Joi.string()).optional(),
   imagen: Joi.string().allow(null, '').optional(),
+  fuenteImagen: Joi.string().allow(null, '').optional(),
+  url: Joi.string().allow(null, '').optional(),
+  fuente: Joi.string().allow(null, '').optional(),
+  visible: Joi.boolean().default(true),
+  archivado: Joi.boolean().default(false),
 });
 
 // ---------- CMS Sections ----------

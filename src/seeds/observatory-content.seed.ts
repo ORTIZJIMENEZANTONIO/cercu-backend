@@ -106,12 +106,12 @@ export async function seedObservatoryContent() {
         sustrato: 'HAFSS: grava de origen igneo + gravilla de roca caliza. Impermeabilizacion con geomembrana',
         usoAgua: 'Recirculacion al lago mayor del Bosque de Aragon',
         serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'regulacion_termica', 'reduccion_lst', 'captura_carbono', 'educacion_ambiental', 'recreacion'],
-        serviciosDescripcion: ['Remocion del 80% de contaminantes, >90% coliformes fecales', 'Habitat para aves migratorias', 'Mitigacion de isla de calor', 'Reduccion de LST', 'Fijacion de carbono', 'Educacion ambiental e investigacion', 'Uso recreativo del lago'],
-        monitoreo: 'Eficiencia documentada: 80% contaminantes generales, 50% nitrogeno (HAFSS), 50% fosforo (HAFS), >90% coliformes. Cumple NOM-001 y NOM-003 SEMARNAT. Inaugurado 30 nov 2012. Vida util: ~25 anos. Fuente: Luna-Pabello & Aburto-Castaneda (2014), TIP Rev., 17(1), 32-55.',
+        serviciosDescripcion: ['Remocion del 80% de contaminantes, >90% coliformes fecales', 'Habitat para aves migratorias', 'Mitigacion de isla de calor', 'Reduccion de LST', 'Fijacion de carbono', 'Educacion ambiental e investigación', 'Uso recreativo del lago'],
+        monitoreo: 'Eficiencia documentada: 80% contaminantes generales, 50% nitrogeno (HAFSS), 50% fosforo (HAFS), >90% coliformes. Cumple NOM-001 y NOM-003 SEMARNAT. Inaugurado 30 nov 2012. Vida util: ~25 años. Fuente: Luna-Pabello & Aburto-Castaneda (2014), TIP Rev., 17(1), 32-55.',
         estado: 'activo',
         lat: 19.4602813, lng: -99.0739094,
         imagen: '/images/humedales/aragon.jpg',
-        fuente: 'Luna-Pabello, V.M. y Aburto-Castaneda, S. (2014). TIP Rev. Esp. Ciencias Quimico-Biologicas, 17(1), 32-55. Facultad de Quimica, UNAM.',
+        fuente: 'Luna-Pabello, V.M. y Aburto-Castaneda, S. (2014). TIP Rev. Esp. Ciencias Químico-Biológicas, 17(1), 32-55. Facultad de Quimica, UNAM.',
         fuenteImagen: 'Fundacion UNAM (2020)',
       },
       {
@@ -202,7 +202,7 @@ export async function seedObservatoryContent() {
       {
         nombre: 'Humedal Artificial CIBAC Cuemanco',
         alcaldia: 'Xochimilco',
-        ubicacion: 'Centro de Investigaciones Acuicolas de Cuemanco (CIBAC), UAM Xochimilco, Canal de Cuemanco',
+        ubicacion: 'Centro de Investigaciónes Acuicolas de Cuemanco (CIBAC), UAM Xochimilco, Canal de Cuemanco',
         tipoHumedal: 'ha_sfs_vertical',
         tipoVegetacion: ['emergente'],
         funcionPrincipal: 'Tratamiento de agua del Canal de Cuemanco para acuicultura y proteccion de especies endemicas (ajolote)',
@@ -213,8 +213,8 @@ export async function seedObservatoryContent() {
         sustrato: 'Grava silica en dos horizontes: principal 0.6 m (particula 1-2 mm) + secundario 0.1 m (particula 1.5-2 cm); filtro de pulimento con minerales calizos (1.8 m2)',
         usoAgua: 'Acuicultura (cultivo de ajolote) y cultivos hidroponicos',
         serviciosEcosistemicos: ['depuracion_agua', 'habitat_fauna', 'educacion_ambiental'],
-        serviciosDescripcion: ['Remocion: 92% DQO, 85% N-NH4, 80% PO4 (12 meses)', 'Agua para conservacion del ajolote', 'Investigacion academica (UAM/UNAM)'],
-        monitoreo: 'Monitoreo mensual 12 meses (mayo 2007 - mayo 2008). DQO 92%, N-NH4 85%, PO4 80%, N-NO2 60%, N-NO3 85%. Cumple NOM-001-SEMARNAT-1996. Vida util: 31.4 anos (HA), 9.3 anos (FP). Fuente: Ramirez-Carrillo, Luna-Pabello & Arredondo-Figueroa (2009), Rev. Mex. Ing. Quim., 8(1), 93-99.',
+        serviciosDescripcion: ['Remocion: 92% DQO, 85% N-NH4, 80% PO4 (12 meses)', 'Agua para conservacion del ajolote', 'Investigación academica (UAM/UNAM)'],
+        monitoreo: 'Monitoreo mensual 12 meses (mayo 2007 - mayo 2008). DQO 92%, N-NH4 85%, PO4 80%, N-NO2 60%, N-NO3 85%. Cumple NOM-001-SEMARNAT-1996. Vida util: 31.4 años (HA), 9.3 años (FP). Fuente: Ramirez-Carrillo, Luna-Pabello & Arredondo-Figueroa (2009), Rev. Mex. Ing. Quim., 8(1), 93-99.',
         estado: 'activo',
         lat: 19.2825, lng: -99.0940,
         imagen: '/images/humedales/cuemanco.jpg',
@@ -243,7 +243,7 @@ export async function seedObservatoryContent() {
         impacto: 'critico',
         recomendacion: {
           titulo: 'Implementar protocolo de monitoreo estandarizado',
-          descripcion: 'Establecer un protocolo unificado con parametros fisicoquimicos y microbiologicos clave.',
+          descripcion: 'Establecer un protocolo unificado con parametros fisicoquímicos y microbiologicos clave.',
           acciones: ['Definir parametros minimos: DQO, nitrogeno total, fosforo total, coliformes fecales y caudal.', 'Establecer frecuencia trimestral de muestreo.', 'Crear plataforma de datos abiertos.', 'Capacitar personal operativo en tecnicas de muestreo.'],
           responsables: ['CIIEMAD-IPN', 'CONAGUA'],
           plazo: 'corto',
@@ -310,7 +310,7 @@ export async function seedObservatoryContent() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  NOTIHUMEDAL — Articulos con imagenes y fuentes
+  //  NOTIHUMEDAL — Artículos con imagenes y fuentes
   // ══════════════════════════════════════════════════════════════════════════
   const notiRepo = AppDataSource.getRepository(ObsNotihumedal);
   if ((await notiRepo.count()) === 0) {
@@ -338,13 +338,13 @@ export async function seedObservatoryContent() {
         fuenteImagen: 'Gobierno de la CDMX',
       },
       {
-        titulo: 'Articulo cientifico: STHA del Bosque de Aragon — 30 anos de investigacion',
+        titulo: 'Artículo científico: STHA del Bosque de Aragon — 30 años de investigación',
         slug: 'luna-pabello-stha-aragon-2014',
         resumen: 'Luna-Pabello y Aburto-Castaneda publican en TIP Revista el diseno y resultados del STHA del lago del Bosque de Aragon.',
-        contenido: '<p>En la revista TIP Rev. Esp. Ciencias Quimico-Biologicas, 17(1), 32-55, los investigadores de la Facultad de Quimica de la UNAM documentan el STHA.</p><p>El sistema combina HAFSS (2,351 m2) con HAFS (5,734 m2) para controlar la eutroficacion del lago. Remocion: 80% contaminantes, >90% coliformes fecales.</p>',
+        contenido: '<p>En la revista TIP Rev. Esp. Ciencias Químico-Biológicas, 17(1), 32-55, los investigadores de la Facultad de Quimica de la UNAM documentan el STHA.</p><p>El sistema combina HAFSS (2,351 m2) con HAFS (5,734 m2) para controlar la eutroficacion del lago. Remocion: 80% contaminantes, >90% coliformes fecales.</p>',
         autor: 'Luna-Pabello, V.M. / GAIA-UNAM',
         fecha: '2014-06-01',
-        tags: ['investigacion', 'UNAM', 'Aragon', 'HAFSS', 'HAFS'],
+        tags: ['investigación', 'UNAM', 'Aragon', 'HAFSS', 'HAFS'],
         imagen: '/images/humedales/aragon.jpg',
         fuenteImagen: 'Gaceta UNAM / GAIA — Facultad de Quimica, UNAM',
       },
@@ -399,7 +399,7 @@ export async function seedObservatoryContent() {
         pageSlug: 'sobre',
         sectionKey: 'criterios',
         items: [
-          { title: 'Ubicacion y ano', description: 'Coordenadas geograficas y ano de implementacion.', icon: '📍' },
+          { title: 'Ubicacion y año', description: 'Coordenadas geograficas y año de implementacion.', icon: '📍' },
           { title: 'Tipo de humedal artificial', description: 'Clasificacion por sistema de flujo: HA de flujo superficial (FWS), HA de flujo subsuperficial horizontal (HSSF) o vertical (VSSF), y sistemas hibridos.', icon: '🏷️' },
           { title: 'Caracteristicas tecnicas', description: 'Vegetacion, sustrato, volumen o superficie documentada.', icon: '🔬' },
           { title: 'Uso del agua tratada', description: 'Destino del agua procesada: riego, recirculacion, infiltracion.', icon: '💧' },
