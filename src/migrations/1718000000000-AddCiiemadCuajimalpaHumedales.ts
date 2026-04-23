@@ -14,7 +14,7 @@ export class AddCiiemadCuajimalpaHumedales1718000000000 implements MigrationInte
           nombre, alcaldia, ubicacion, tipoHumedal, tipoVegetacion,
           funcionPrincipal, anioImplementacion, vegetacion, sustrato,
           usoAgua, serviciosEcosistemicos, serviciosDescripcion,
-          monitoreo, estado, lat, lng, fuente,
+          monitoreo, estado, lat, lng, imagen, fuente, fuenteImagen,
           visible, archivado
         ) VALUES (
           'Humedal Artificial Experimental CIIEMAD-IPN',
@@ -32,7 +32,9 @@ export class AddCiiemadCuajimalpaHumedales1718000000000 implements MigrationInte
           'Eficiencias de remocion: DBO5 92.07%, SST 81.31%, amonio 96.67%, fosforo 88.81%. Sistema experimental vinculado a tesis de maestria CIIEMAD-IPN (Dominguez Solis, 2025).',
           'activo',
           19.5138995, -99.1288954,
+          '/images/humedales/ciiemad.jpg',
           'Dominguez Solis, D. (2025). Humedal artificial: una solucion basada en la naturaleza para el tratamiento de aguas residuales a nivel hogar en la Colonia La Laguna Ticoman, CDMX. Tesis de maestria, CIIEMAD-IPN.',
+          'CIIEMAD-IPN (2025)',
           true, false
         )
       `);
