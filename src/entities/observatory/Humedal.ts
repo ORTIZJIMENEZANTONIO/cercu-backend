@@ -26,7 +26,7 @@ export class ObsHumedal {
   @Column({ type: 'text', nullable: true })
   funcionPrincipal!: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'text', nullable: true })
   fuente!: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

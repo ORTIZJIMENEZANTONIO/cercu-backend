@@ -4,6 +4,11 @@ export class AddUAMAzcapotzalcoHumedal1720000000000 implements MigrationInterfac
   name = 'AddUAMAzcapotzalcoHumedal1720000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Ampliar columna `fuente` a TEXT (la cita bibliográfica de UAM-Azcapotzalco supera 500 chars)
+    await queryRunner.query(
+      `ALTER TABLE obs_humedales MODIFY COLUMN fuente TEXT NULL`
+    );
+
     // ── Insert UAM-Azcapotzalco pilot wetland (Barceló et al., IMTA 2014) ──
     const existing = await queryRunner.query(
       `SELECT id FROM obs_humedales WHERE nombre LIKE '%UAM-Azcapotzalco%' LIMIT 1`
