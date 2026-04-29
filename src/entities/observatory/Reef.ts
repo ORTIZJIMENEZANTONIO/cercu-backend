@@ -71,6 +71,9 @@ export class ObsReef {
   @Column({ type: 'varchar', length: 500, nullable: true })
   hero!: string | null;
 
+  @Column({ type: 'json', nullable: true })
+  gallery!: string[] | null;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   imageCredit!: string | null;
 

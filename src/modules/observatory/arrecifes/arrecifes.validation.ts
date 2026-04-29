@@ -20,6 +20,7 @@ export const reefSchema = Joi.object({
   lng: Joi.number().min(-180).max(180).required(),
   description: Joi.string().allow('', null).optional(),
   hero: Joi.string().allow('', null).optional(),
+  gallery: Joi.array().items(Joi.string()).max(3).optional(),
   imageCredit: Joi.string().allow('', null).optional(),
   visible: Joi.boolean().default(true),
   archived: Joi.boolean().default(false),

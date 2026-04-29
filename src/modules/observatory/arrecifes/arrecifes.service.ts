@@ -16,12 +16,16 @@ type PageOpts = { page?: number; limit?: number };
 
 export class ArrecifesService {
   // ──────────────────────────── Summary ────────────────────────────
+  // Conteos totales por entidad + breakdown de observaciones y arrecifes por estado.
+  // Los filtros visible/archived suelen ser NULL en filas creadas antes de añadir
+  // las columnas; usar count() sin where evita falsos 0.
   async getSummary() {
-    const [reefs, conflicts, contributors] = await Promise.all([
+    const [reefsTotal, conflictsTotal, contributorsTotal] = await Promise.all([
       reefRepo().count(),
       conflictRepo().count(),
       contributorRepo().count(),
     ]);
+
     const observationsByStatus = await observationRepo()
       .createQueryBuilder('o')
       .select('o.status', 'status')
@@ -34,7 +38,7 @@ export class ArrecifesService {
       (obs as any)[row.status] = Number(row.count);
     }
 
-    const reefsByStatus = await reefRepo()
+    const reefsByStatusRows = await reefRepo()
       .createQueryBuilder('r')
       .select('r.status', 'status')
       .addSelect('COUNT(*)', 'count')
@@ -43,9 +47,21 @@ export class ArrecifesService {
 
     return {
       observatory: 'arrecifes',
-      content: { reefs, conflicts, contributors },
+      content: {
+        reefs: reefsTotal,
+        conflicts: conflictsTotal,
+        contributors: contributorsTotal,
+      },
+      totals: {
+        reefs: reefsTotal,
+        conflicts: conflictsTotal,
+        contributors: contributorsTotal,
+      },
       observations: obs,
-      reefsByStatus: reefsByStatus.reduce((acc: any, r: any) => ({ ...acc, [r.status]: Number(r.count) }), {}),
+      reefsByStatus: reefsByStatusRows.reduce(
+        (acc: any, r: any) => ({ ...acc, [r.status]: Number(r.count) }),
+        {},
+      ),
     };
   }
 

@@ -73,8 +73,9 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 44 TypeORM entities (34 core + 10 observatory)
-│   │   └── observatory/     # 10 entities: ObservatoryAdmin, ProspectSubmission, Obs* content/CMS/news
+│   ├── entities/             # 49 TypeORM entities (34 core + 15 observatory)
+│   │   └── observatory/     # 15 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
+│   │                         # arrecifes: Reef, Conflict, Contributor, Observation, BleachingAlert)
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -95,7 +96,8 @@ cercu-backend/
 │   │       ├── ai/           # Roof analysis via Gemini 2.0 Flash (image → green roof aptitude)
 │   │       └── remote-sensing/  # Vegetation/water indices (GEE + Sentinel Hub + fallback)
 │   ├── jobs/                 # 4 cron jobs
-│   ├── seeds/                # Database seeding (categories, admin, test data, gamification, observatory-admin)
+│   ├── seeds/                # Database seeding: categories, admin, test data, gamification, observatory-admin,
+│   │                         # observatory-content, arrecifes, arrecifes-observations, arrecifes-alerts
 │   ├── middleware/           # auth, role, observatory-auth, errorHandler, rateLimiter, validate, upload
 │   ├── utils/                # jwt, asyncHandler, haversine, pagination, phone
 │   └── types/                # TypeScript definitions
@@ -399,25 +401,52 @@ pm2 startup
 
 ## Observatory Admin System
 
-Shared backend for two observatory frontends: **observatorio-techos-verdes** (green roofs) and **observatorio-humedales** (artificial wetlands).
+Shared backend for **three** observatory frontends: **observatorio-techos-verdes** (green roofs), **observatorio-humedales** (artificial wetlands), and **observatorio-arrecifes** (Mexican coral reefs — `arrecifes.cercu.com.mx`, port 3007).
 
 ### Architecture
 - **Separate entity**: `ObservatoryAdmin` (not the CERCU `User` table) — email+password auth, bcrypt-hashed
 - **Separate middleware**: `observatory-auth.middleware.ts` — verifies JWT, looks up `observatory_admins` table
-- **Multi-tenant**: Routes use `/:observatory` param (`techos-verdes` | `humedales`), middleware validates admin has access
+- **Multi-tenant**: Routes use `/:observatory` param (`techos-verdes` | `humedales` | `arrecifes`), middleware validates admin has access
 - **Approval queue**: `ProspectSubmission` entity — external detectors POST prospects, admin approves/rejects
 
-### Entities (10)
+### Entities (15)
+**Shared:**
 - `ObservatoryAdmin` (`observatory_admins`) — id (uuid), email, passwordHash, name, observatories (simple-array), isActive
 - `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt
+- `ObsCmsSection` (`obs_cms_sections`) — CMS page sections: pageSlug, sectionKey, items (JSON array), updatedBy
+
+**Techos verdes:**
 - `ObsGreenRoof` (`obs_green_roofs`) — green roof CRUD data
 - `ObsCandidateRoof` (`obs_candidate_roofs`) — candidate roof CRUD data
 - `ObsValidationRecord` (`obs_validation_records`) — validation records
+
+**Humedales:**
 - `ObsHumedal` (`obs_humedales`) — wetland CRUD data
 - `ObsHallazgo` (`obs_hallazgos`) — findings & recommendations
 - `ObsNotihumedal` (`obs_notihumedal`) — wetland news articles: titulo, slug, resumen, contenido (longtext), css_content, editor_data (JSON), autor, fecha, tags (JSON), imagen
 - `ObsProspectoNoticia` (`obs_prospecto_noticias`) — scraped news prospects: titulo, resumen, url, fuente, fecha, estado (pendiente/aprobado/rechazado), notasRechazo, urlHash (SHA-256 for dedup), reviewedBy
-- `ObsCmsSection` (`obs_cms_sections`) — CMS page sections: pageSlug, sectionKey, items (JSON array), updatedBy
+
+**Arrecifes** (módulo `modules/observatory/arrecifes/`):
+- `ObsReef` (`obs_reefs`) — name, state, ocean, region, benthicClasses (JSON), geomorphicClasses (JSON), area, depthRange (JSON tuple), protection, status, liveCoralCover, bleachingAlert, speciesRichness, threats (JSON), observations counter, lat/lng, description, hero, **gallery (JSON max 3)**, imageCredit, visible, archived
+- `ObsConflict` (`obs_conflicts`) — title, summary, fullStory (longtext), reefIds (JSON), state, threats (JSON), intensity, status, affectedCommunities (JSON), affectedSpecies (JSON), drivers (JSON), resistance (JSON), legalActions (JSON), mediaUrls (JSON), startedAt, contributorId, visible, archived
+- `ObsContributor` (`obs_contributors`) — displayName, handle (unique), role, affiliation, bio, avatarUrl, state, joinedAt, tier (bronze→coral), reputationScore, validatedContributions, rejectedContributions, acceptanceRate, averageQuality, consecutiveMonthsActive, badges (JSON), publicProfile, verified, visible, archived
+- `ObsObservation` (`obs_observations`) — reefId (nullable), type, title, description, contributorId, capturedAt, submittedAt, lat/lng, attachments (JSON), tags (JSON), status (pending/in_review/validated/rejected/needs_more_info), reviewerId, reviewerNotes, validatedAt, qualityScore, visible, archived
+- `ObsBleachingAlert` (`obs_bleaching_alerts`) — reefId, level (no_stress/watch/warning/alert_1/alert_2), dhw, sst, sstAnomaly, observedAt, source (default `noaa_crw`), productUrl
+
+**Routes arrecifes** (mounted under `/api/v1/observatory/arrecifes/`):
+- Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`
+- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW)
+- Submission ciudadana: `POST /observations` (sin auth → estado `pending`)
+
+**Migraciones:**
+- `1722000000000-CreateArrecifesTables.ts` — crea las 5 tablas (`obs_reefs`, `obs_conflicts`, `obs_contributors`, `obs_observations`, `obs_bleaching_alerts`) con índices (ocean, status, intensity, tier, etc.). Idempotente vía `SHOW TABLES LIKE`.
+- `1723000000000-AddGalleryToObsReefs.ts` — añade columna `gallery JSON NULL` a `obs_reefs`. Idempotente vía `SHOW COLUMNS LIKE`.
+
+**Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`):
+- `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors (con tiers bronze→coral) + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef
+- `arrecifes-observations.seed.ts` — 6 observations cubriendo todo el workflow (1 pending, 1 in_review, 2 validated, 1 rejected, 1 needs_more_info) — demo de la cola de revisión
+- `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
+- `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`)
 
 ### Observatory API Routes
 Base: `/api/v1/observatory`
@@ -544,7 +573,10 @@ npm run seed   # Creates/updates admin with bcrypt hash (12 rounds)
 ```
 
 ### Frontend Integration
-Both observatory frontends connect to this backend:
-- **techos-verdes**: `NUXT_PUBLIC_API_BASE_URL=http://localhost:3003/api/v1` (port 3003 dev)
-- **humedales**: `NUXT_PUBLIC_API_BASE_URL=http://localhost:3003/api/v1` (port 3005 prod)
-- Admin pages at `/admin/login` → `/admin/*` with JWT stored in localStorage
+Three observatory frontends connect to this backend:
+- **techos-verdes** — port 3002 prod, `https://techos-verdes.cercu.com.mx`
+- **humedales** — port 3005 prod, `https://humedales.cercu.com.mx`
+- **arrecifes** — port 3007 prod, `https://arrecifes.cercu.com.mx`
+- Admin pages at `/admin/login` → `/admin/*` with JWT stored in localStorage (per-observatory key)
+- Frontend `useApi` composable detecta 401/403 → auto-logout + redirect a `/admin/login?redirect=<ruta>` con `replace: true` (sin entrada en back-stack)
+- Asegurar CORS_ORIGIN incluye los 3 dominios públicos antes de pegar PRs
