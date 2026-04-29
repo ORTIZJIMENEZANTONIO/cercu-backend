@@ -6,6 +6,7 @@ import { seedTestData } from './testdata.seed';
 import { seedGamification } from './gamification.seed';
 import { seedObservatoryAdmin } from './observatory-admin.seed';
 import { seedObservatoryContent } from './observatory-content.seed';
+import { seedArrecifes } from './arrecifes.seed';
 import { seedConfigKV } from './config-kv.seed';
 
 async function runSeeds() {
@@ -20,6 +21,7 @@ async function runSeeds() {
     await seedConfigKV();
     await seedObservatoryAdmin();
     await seedObservatoryContent();
+    await seedArrecifes();
 
     console.log('All seeds completed successfully');
     process.exit(0);
