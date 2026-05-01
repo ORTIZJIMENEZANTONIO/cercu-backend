@@ -448,10 +448,10 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 **Migraciones:**
 - `1722000000000-CreateArrecifesTables.ts` — crea las 5 tablas iniciales (`obs_reefs`, `obs_conflicts`, `obs_contributors`, `obs_observations`, `obs_bleaching_alerts`) con índices (ocean, status, intensity, tier, etc.). Idempotente vía `SHOW TABLES LIKE`.
 - `1723000000000-AddGalleryToObsReefs.ts` — añade columna `gallery JSON NULL` a `obs_reefs`. Idempotente vía `SHOW COLUMNS LIKE`.
-- Las tablas `obs_layers`, `obs_tiers` y la columna `obs_conflicts.geometry` se crean por auto-sync de TypeORM en dev (no hay migración explícita aún). Para producción conviene generar `npm run migration:generate` antes de deploy.
+- `1724000000000-AddLayersTiersAndConflictGeometry.ts` — crea `obs_layers` (catálogo + uploads) y `obs_tiers` (modos de participación / escalas reputacionales) + agrega `geometry JSON NULL` a `obs_conflicts`. Sólo `UNIQUE INDEX` sobre `slug` (sin INDEX adicional) para evitar el bug TypeORM "Duplicate key name". Idempotente.
 
 **Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
-- `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors (con tiers bronze→coral) + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`)
+- `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`) + **13 layers** iniciales (NOAA CRW, NASA MODIS/PACE, ESA Sentinel-2, GEBCO, CONABIO ANP+coral, CONANP, GFW, NOAA SaWS, INEGI). Las layers son `kind=external_url`; el admin puede subir `kind=uploaded_file` después.
 - `arrecifes-observations.seed.ts` — 6 observations cubriendo todo el workflow (1 pending, 1 in_review, 2 validated, 1 rejected, 1 needs_more_info) — demo de la cola de revisión
 - `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
 - `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`)
