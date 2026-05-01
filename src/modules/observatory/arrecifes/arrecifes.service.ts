@@ -1,9 +1,13 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { AppDataSource } from '../../../ormconfig';
 import { ObsReef } from '../../../entities/observatory/Reef';
 import { ObsConflict } from '../../../entities/observatory/Conflict';
 import { ObsContributor } from '../../../entities/observatory/Contributor';
 import { ObsObservation } from '../../../entities/observatory/Observation';
 import { ObsBleachingAlert } from '../../../entities/observatory/BleachingAlert';
+import { ObsLayer } from '../../../entities/observatory/Layer';
+import { ObsTier } from '../../../entities/observatory/Tier';
 import { AppError } from '../../../middleware/errorHandler.middleware';
 
 const reefRepo = () => AppDataSource.getRepository(ObsReef);
@@ -11,19 +15,43 @@ const conflictRepo = () => AppDataSource.getRepository(ObsConflict);
 const contributorRepo = () => AppDataSource.getRepository(ObsContributor);
 const observationRepo = () => AppDataSource.getRepository(ObsObservation);
 const alertRepo = () => AppDataSource.getRepository(ObsBleachingAlert);
+const layerRepo = () => AppDataSource.getRepository(ObsLayer);
+const tierRepo = () => AppDataSource.getRepository(ObsTier);
+
+const UPLOADS_ROOT = path.join(__dirname, '../../../../uploads');
 
 type PageOpts = { page?: number; limit?: number };
 
 export class ArrecifesService {
   // ──────────────────────────── Summary ────────────────────────────
-  // Conteos totales por entidad + breakdown de observaciones y arrecifes por estado.
-  // Los filtros visible/archived suelen ser NULL en filas creadas antes de añadir
-  // las columnas; usar count() sin where evita falsos 0.
+  // Cuenta dos cosas distintas:
+  //  - `totals.X`  → todas las filas en la tabla (incluye archived/oculto).
+  //  - `content.X` → "públicas": visible IS NULL o true, archived IS NULL o false.
+  //    NULL-safe porque filas creadas antes de añadir las columnas tienen NULL ahí.
+  // Todos los counts se coercen con Number() — en algunas combinaciones de TypeORM +
+  // mysql2 `count()` devuelve string y eso reventaba a `value: 0` en el frontend.
   async getSummary() {
-    const [reefsTotal, conflictsTotal, contributorsTotal] = await Promise.all([
+    const publicCount = (entity: any, alias: string) =>
+      AppDataSource.getRepository(entity)
+        .createQueryBuilder(alias)
+        .where(`(${alias}.visible IS NULL OR ${alias}.visible = :vis)`, { vis: true })
+        .andWhere(`(${alias}.archived IS NULL OR ${alias}.archived = :arch)`, { arch: false })
+        .getCount();
+
+    const [
+      reefsTotal,
+      reefsPublic,
+      conflictsTotal,
+      conflictsPublic,
+      contributorsTotal,
+      contributorsPublic,
+    ] = await Promise.all([
       reefRepo().count(),
+      publicCount(ObsReef, 'r'),
       conflictRepo().count(),
+      publicCount(ObsConflict, 'c'),
       contributorRepo().count(),
+      publicCount(ObsContributor, 'c'),
     ]);
 
     const observationsByStatus = await observationRepo()
@@ -45,17 +73,19 @@ export class ArrecifesService {
       .groupBy('r.status')
       .getRawMany();
 
+    const n = (v: unknown) => Number(v) || 0;
+
     return {
       observatory: 'arrecifes',
       content: {
-        reefs: reefsTotal,
-        conflicts: conflictsTotal,
-        contributors: contributorsTotal,
+        reefs: n(reefsPublic),
+        conflicts: n(conflictsPublic),
+        contributors: n(contributorsPublic),
       },
       totals: {
-        reefs: reefsTotal,
-        conflicts: conflictsTotal,
-        contributors: contributorsTotal,
+        reefs: n(reefsTotal),
+        conflicts: n(conflictsTotal),
+        contributors: n(contributorsTotal),
       },
       observations: obs,
       reefsByStatus: reefsByStatusRows.reduce(
@@ -329,5 +359,170 @@ export class ArrecifesService {
       await reefRepo().save(reef);
     }
     return saved;
+  }
+
+  // ──────────────────────────── Layers ────────────────────────────
+  async listLayers(
+    { page = 1, limit = 100 }: PageOpts,
+    filters: {
+      search?: string;
+      provider?: string;
+      category?: string;
+      kind?: string;
+      active?: string;
+      visible?: string;
+      archived?: string;
+      publicOnly?: boolean;
+    } = {},
+  ) {
+    const qb = layerRepo().createQueryBuilder('l');
+    if (filters.publicOnly) {
+      qb.andWhere('l.visible = :vis', { vis: true });
+      qb.andWhere('l.archived = :arch', { arch: false });
+    }
+    if (filters.search)
+      qb.andWhere('(l.title LIKE :search OR l.slug LIKE :search)', { search: `%${filters.search}%` });
+    if (filters.provider) qb.andWhere('l.provider = :provider', { provider: filters.provider });
+    if (filters.category) qb.andWhere('l.category = :category', { category: filters.category });
+    if (filters.kind) qb.andWhere('l.kind = :kind', { kind: filters.kind });
+    if (filters.active === 'true') qb.andWhere('l.active = :a', { a: true });
+    if (filters.active === 'false') qb.andWhere('l.active = :a', { a: false });
+    if (filters.visible === 'true') qb.andWhere('l.visible = :vis', { vis: true });
+    if (filters.visible === 'false') qb.andWhere('l.visible = :vis', { vis: false });
+    if (filters.archived === 'true') qb.andWhere('l.archived = :arch', { arch: true });
+    if (filters.archived === 'false') qb.andWhere('l.archived = :arch', { arch: false });
+    qb.orderBy('l.sortOrder', 'ASC').addOrderBy('l.id', 'ASC').skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
+    return { items, pagination: { page, limit, total } };
+  }
+
+  async getLayer(idOrSlug: number | string) {
+    const where = typeof idOrSlug === 'number' ? { id: idOrSlug } : { slug: idOrSlug };
+    const r = await layerRepo().findOne({ where });
+    if (!r) throw new AppError('Capa no encontrada', 404);
+    return r;
+  }
+
+  async createLayer(data: Partial<ObsLayer>) {
+    const slug = (data.slug || '').trim().toLowerCase();
+    if (!slug) throw new AppError('slug requerido', 400);
+    const existing = await layerRepo().findOne({ where: { slug } });
+    if (existing) throw new AppError('Slug ya existe', 400);
+    return layerRepo().save(layerRepo().create({ ...data, slug }));
+  }
+
+  async updateLayer(id: number, data: Partial<ObsLayer>) {
+    const r = await this.getLayer(id);
+    // Si cambia slug, validar unicidad.
+    if (data.slug && data.slug !== r.slug) {
+      const dup = await layerRepo().findOne({ where: { slug: data.slug } });
+      if (dup) throw new AppError('Slug ya existe', 400);
+    }
+    Object.assign(r, data);
+    return layerRepo().save(r);
+  }
+
+  async attachLayerFile(
+    id: number,
+    file: { filename: string; originalname: string; size: number; mimetype: string; path: string },
+  ) {
+    const layer = await this.getLayer(id);
+    // Si había un archivo previo subido, intentamos borrarlo silenciosamente.
+    if (layer.kind === 'uploaded_file' && layer.filePath) {
+      const prev = path.join(UPLOADS_ROOT, layer.filePath);
+      await fs.unlink(prev).catch(() => undefined);
+    }
+    layer.kind = 'uploaded_file';
+    layer.fileName = file.originalname;
+    layer.filePath = path.posix.join('layers', file.filename);
+    layer.fileSize = file.size;
+    layer.mimeType = file.mimetype;
+    return layerRepo().save(layer);
+  }
+
+  async deleteLayer(id: number) {
+    const r = await this.getLayer(id);
+    if (r.kind === 'uploaded_file' && r.filePath) {
+      const abs = path.join(UPLOADS_ROOT, r.filePath);
+      await fs.unlink(abs).catch(() => undefined);
+    }
+    await layerRepo().remove(r);
+    return { deleted: true };
+  }
+
+  // ──────────────────────────── Tiers ────────────────────────────
+  async listTiers(filters: { visible?: string; archived?: string; publicOnly?: boolean } = {}) {
+    const qb = tierRepo().createQueryBuilder('t');
+    if (filters.publicOnly) {
+      qb.andWhere('t.visible = :vis', { vis: true });
+      qb.andWhere('t.archived = :arch', { arch: false });
+    }
+    if (filters.visible === 'true') qb.andWhere('t.visible = :vis', { vis: true });
+    if (filters.visible === 'false') qb.andWhere('t.visible = :vis', { vis: false });
+    if (filters.archived === 'true') qb.andWhere('t.archived = :arch', { arch: true });
+    if (filters.archived === 'false') qb.andWhere('t.archived = :arch', { arch: false });
+    qb.orderBy('t.sortOrder', 'ASC').addOrderBy('t.minScore', 'ASC');
+    const items = await qb.getMany();
+    return { items };
+  }
+
+  async getTier(idOrSlug: number | string) {
+    const where = typeof idOrSlug === 'number' ? { id: idOrSlug } : { slug: idOrSlug };
+    const t = await tierRepo().findOne({ where });
+    if (!t) throw new AppError('Escala no encontrada', 404);
+    return t;
+  }
+
+  async createTier(data: Partial<ObsTier>) {
+    const slug = (data.slug || '').trim().toLowerCase();
+    if (!slug) throw new AppError('slug requerido', 400);
+    const existing = await tierRepo().findOne({ where: { slug } });
+    if (existing) throw new AppError('Slug ya existe', 400);
+    return tierRepo().save(tierRepo().create({ ...data, slug }));
+  }
+
+  async updateTier(id: number, data: Partial<ObsTier>) {
+    const t = await this.getTier(id);
+    if (data.slug && data.slug !== t.slug) {
+      const dup = await tierRepo().findOne({ where: { slug: data.slug } });
+      if (dup) throw new AppError('Slug ya existe', 400);
+    }
+    Object.assign(t, data);
+    return tierRepo().save(t);
+  }
+
+  async deleteTier(id: number) {
+    const t = await this.getTier(id);
+    // Si hay colaboradores con este slug, no permitimos borrado físico.
+    const inUse = await contributorRepo().count({ where: { tier: t.slug } });
+    if (inUse > 0) {
+      throw new AppError(
+        `No se puede eliminar: ${inUse} colaborador${inUse === 1 ? '' : 'es'} usa${inUse === 1 ? '' : 'n'} esta escala. Archívala en su lugar.`,
+        400,
+      );
+    }
+    await tierRepo().remove(t);
+    return { deleted: true };
+  }
+
+  // Devuelve la ruta absoluta del binario subido para descarga directa,
+  // o la URL externa para redirect 302. Lanza 404 si la capa no es descargable.
+  async resolveLayerDownload(id: number): Promise<{ kind: 'file'; absPath: string; fileName: string; mimeType: string }
+    | { kind: 'redirect'; url: string }
+  > {
+    const layer = await this.getLayer(id);
+    if (layer.archived || !layer.visible) throw new AppError('Capa no disponible', 404);
+
+    if (layer.kind === 'uploaded_file' && layer.filePath) {
+      return {
+        kind: 'file',
+        absPath: path.join(UPLOADS_ROOT, layer.filePath),
+        fileName: layer.fileName || path.basename(layer.filePath),
+        mimeType: layer.mimeType || 'application/octet-stream',
+      };
+    }
+    const ext = layer.downloadUrl || layer.sourceUrl;
+    if (!ext) throw new AppError('La capa no tiene URL de descarga', 404);
+    return { kind: 'redirect', url: ext };
   }
 }

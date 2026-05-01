@@ -211,4 +211,114 @@ export class ArrecifesController {
     const result = await service.createAlert(req.body);
     res.status(201).json({ success: true, data: result });
   }
+
+  // ─── Layers ───
+  async listLayers(req: Request, res: Response) {
+    const { page, limit, search, provider, category, kind, active, visible, archived } = req.query;
+    const result = await service.listLayers(
+      { page: Number(page) || 1, limit: Number(limit) || 100 },
+      {
+        search: search as string,
+        provider: provider as string,
+        category: category as string,
+        kind: kind as string,
+        active: parseBoolStr(active),
+        visible: parseBoolStr(visible),
+        archived: parseBoolStr(archived),
+      },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async listLayersPublic(req: Request, res: Response) {
+    const { page, limit, search, provider, category, kind } = req.query;
+    const result = await service.listLayers(
+      { page: Number(page) || 1, limit: Number(limit) || 100 },
+      {
+        search: search as string,
+        provider: provider as string,
+        category: category as string,
+        kind: kind as string,
+        publicOnly: true,
+      },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async getLayer(req: Request, res: Response) {
+    const idParam = req.params.id;
+    const idOrSlug = /^\d+$/.test(idParam) ? Number(idParam) : idParam;
+    const result = await service.getLayer(idOrSlug);
+    res.json({ success: true, data: result });
+  }
+
+  async createLayer(req: Request, res: Response) {
+    const result = await service.createLayer(req.body);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async updateLayer(req: Request, res: Response) {
+    const result = await service.updateLayer(Number(req.params.id), req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async uploadLayerFile(req: Request, res: Response) {
+    if (!req.file) {
+      res.status(400).json({ success: false, error: 'Archivo requerido (campo "file")' });
+      return;
+    }
+    const result = await service.attachLayerFile(Number(req.params.id), req.file);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteLayer(req: Request, res: Response) {
+    const result = await service.deleteLayer(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  async downloadLayer(req: Request, res: Response) {
+    const result = await service.resolveLayerDownload(Number(req.params.id));
+    if (result.kind === 'redirect') {
+      res.redirect(302, result.url);
+      return;
+    }
+    res.download(result.absPath, result.fileName, { headers: { 'Content-Type': result.mimeType } });
+  }
+
+  // ─── Tiers (escala de la red) ───
+  async listTiers(req: Request, res: Response) {
+    const { visible, archived } = req.query;
+    const result = await service.listTiers({
+      visible: parseBoolStr(visible),
+      archived: parseBoolStr(archived),
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async listTiersPublic(_req: Request, res: Response) {
+    const result = await service.listTiers({ publicOnly: true });
+    res.json({ success: true, ...result });
+  }
+
+  async getTier(req: Request, res: Response) {
+    const idParam = req.params.id;
+    const idOrSlug = /^\d+$/.test(idParam) ? Number(idParam) : idParam;
+    const result = await service.getTier(idOrSlug);
+    res.json({ success: true, data: result });
+  }
+
+  async createTier(req: Request, res: Response) {
+    const result = await service.createTier(req.body);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async updateTier(req: Request, res: Response) {
+    const result = await service.updateTier(Number(req.params.id), req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteTier(req: Request, res: Response) {
+    const result = await service.deleteTier(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
 }

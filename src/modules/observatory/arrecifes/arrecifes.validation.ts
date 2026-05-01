@@ -42,6 +42,14 @@ export const conflictSchema = Joi.object({
   resistance: Joi.array().items(Joi.string()).optional(),
   legalActions: Joi.array().items(Joi.string()).optional(),
   mediaUrls: Joi.array().items(Joi.string()).optional(),
+  geometry: Joi.object({
+    type: Joi.string()
+      .valid('Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon')
+      .required(),
+    coordinates: Joi.array().required(),
+  })
+    .allow(null)
+    .optional(),
   contributorId: Joi.number().integer().allow(null).optional(),
   visible: Joi.boolean().default(true),
   archived: Joi.boolean().default(false),
@@ -98,4 +106,70 @@ export const bleachingAlertSchema = Joi.object({
   observedAt: Joi.string().required(),
   source: Joi.string().default('noaa_crw'),
   productUrl: Joi.string().allow('', null).optional(),
+});
+
+const layerFormats = ['wms', 'wmts', 'geotiff', 'shapefile', 'geojson', 'kml', 'csv', 'cog'] as const;
+const layerCategories = [
+  'thermal_stress',
+  'bathymetry',
+  'benthic_habitat',
+  'water_quality',
+  'protected_areas',
+  'land_use',
+  'fishing_pressure',
+  'community_observations',
+] as const;
+
+export const tierSchema = Joi.object({
+  slug: Joi.string()
+    .pattern(/^[a-z0-9-]+$/)
+    .min(2)
+    .max(50)
+    .required(),
+  label: Joi.string().required(),
+  description: Joi.string().allow('', null).optional(),
+  minScore: Joi.number().integer().min(0).default(0),
+  maxScore: Joi.number().integer().min(0).allow(null).optional(),
+  color: Joi.string().default('slate'),
+  requirements: Joi.string().allow('', null).optional(),
+  icon: Joi.string().allow('', null).optional(),
+  sortOrder: Joi.number().integer().default(0),
+  visible: Joi.boolean().default(true),
+  archived: Joi.boolean().default(false),
+});
+
+export const layerSchema = Joi.object({
+  slug: Joi.string()
+    .pattern(/^[a-z0-9-]+$/)
+    .min(3)
+    .max(100)
+    .required(),
+  title: Joi.string().required(),
+  description: Joi.string().allow('', null).optional(),
+  kind: Joi.string().valid('external_url', 'uploaded_file').default('external_url'),
+  provider: Joi.string().required(),
+  providerLabel: Joi.string().required(),
+  category: Joi.string()
+    .valid(...layerCategories)
+    .required(),
+  format: Joi.string()
+    .valid(...layerFormats)
+    .required(),
+  resolution: Joi.string().allow('', null).optional(),
+  cadence: Joi.string().allow('', null).optional(),
+  coverage: Joi.string().valid('global', 'regional', 'national').default('regional'),
+  license: Joi.string().required(),
+  attribution: Joi.string().required(),
+  sourceUrl: Joi.string().uri().allow('', null).optional(),
+  downloadUrl: Joi.string().uri().allow('', null).optional(),
+  previewUrl: Joi.string().uri().allow('', null).optional(),
+  wmsUrl: Joi.string().uri().allow('', null).optional(),
+  wmsLayerName: Joi.string().allow('', null).optional(),
+  tileUrlPattern: Joi.string().allow('', null).optional(),
+  overlayOpacity: Joi.number().min(0).max(1).default(0.7),
+  lastUpdated: Joi.string().allow('', null).optional(),
+  active: Joi.boolean().default(true),
+  visible: Joi.boolean().default(true),
+  archived: Joi.boolean().default(false),
+  sortOrder: Joi.number().integer().default(0),
 });

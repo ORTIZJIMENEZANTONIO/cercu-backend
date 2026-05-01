@@ -73,9 +73,10 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 49 TypeORM entities (34 core + 15 observatory)
-│   │   └── observatory/     # 15 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
-│   │                         # arrecifes: Reef, Conflict, Contributor, Observation, BleachingAlert)
+│   ├── entities/             # 51 TypeORM entities (34 core + 17 observatory)
+│   │   └── observatory/     # 17 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
+│   │                         # arrecifes: Reef, Conflict (con geometry GeoJSON), Contributor,
+│   │                         # Observation, BleachingAlert, Layer (CRUD + uploads), Tier (escalas))
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -428,25 +429,32 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 
 **Arrecifes** (módulo `modules/observatory/arrecifes/`):
 - `ObsReef` (`obs_reefs`) — name, state, ocean, region, benthicClasses (JSON), geomorphicClasses (JSON), area, depthRange (JSON tuple), protection, status, liveCoralCover, bleachingAlert, speciesRichness, threats (JSON), observations counter, lat/lng, description, hero, **gallery (JSON max 3)**, imageCredit, visible, archived
-- `ObsConflict` (`obs_conflicts`) — title, summary, fullStory (longtext), reefIds (JSON), state, threats (JSON), intensity, status, affectedCommunities (JSON), affectedSpecies (JSON), drivers (JSON), resistance (JSON), legalActions (JSON), mediaUrls (JSON), startedAt, contributorId, visible, archived
-- `ObsContributor` (`obs_contributors`) — displayName, handle (unique), role, affiliation, bio, avatarUrl, state, joinedAt, tier (bronze→coral), reputationScore, validatedContributions, rejectedContributions, acceptanceRate, averageQuality, consecutiveMonthsActive, badges (JSON), publicProfile, verified, visible, archived
+- `ObsConflict` (`obs_conflicts`) — title, summary, fullStory (longtext), reefIds (JSON), state, threats (JSON), intensity, status, affectedCommunities (JSON), affectedSpecies (JSON), drivers (JSON), resistance (JSON), legalActions (JSON), mediaUrls (JSON), startedAt, **geometry (JSON GeoJSON Point/LineString/Polygon/Multi*)**, contributorId, visible, archived
+- `ObsContributor` (`obs_contributors`) — displayName, handle (unique), role, affiliation, bio, avatarUrl, state, joinedAt, tier (slug → `obs_tiers.slug`), reputationScore, validatedContributions, rejectedContributions, acceptanceRate, averageQuality, consecutiveMonthsActive, badges (JSON), publicProfile, verified, visible, archived
 - `ObsObservation` (`obs_observations`) — reefId (nullable), type, title, description, contributorId, capturedAt, submittedAt, lat/lng, attachments (JSON), tags (JSON), status (pending/in_review/validated/rejected/needs_more_info), reviewerId, reviewerNotes, validatedAt, qualityScore, visible, archived
 - `ObsBleachingAlert` (`obs_bleaching_alerts`) — reefId, level (no_stress/watch/warning/alert_1/alert_2), dhw, sst, sstAnomaly, observedAt, source (default `noaa_crw`), productUrl
+- `ObsLayer` (`obs_layers`) — slug (unique), title, description, kind (`external_url`|`uploaded_file`), provider, providerLabel, category, format (wms/wmts/geotiff/shapefile/geojson/kml/csv/cog), resolution, cadence, coverage, license, attribution, sourceUrl, downloadUrl, previewUrl, wmsUrl, wmsLayerName, tileUrlPattern, overlayOpacity (decimal 3,2), fileName, filePath, fileSize (bigint), mimeType, lastUpdated, active, visible, archived, sortOrder
+- `ObsTier` (`obs_tiers`) — slug (unique), label, description, minScore, maxScore (nullable), color (token), requirements, icon (lucide), sortOrder, visible, archived. Borrado físico bloqueado por el service si hay `Contributor` con ese slug (debe archivarse)
+
+⚠️ **Bug TypeORM:** combinar `@Column({ unique: true })` + `@Index()` en la misma columna genera dos índices con el mismo nombre y revienta el `CREATE TABLE` con `Duplicate key name`. `unique: true` ya crea el índice — basta con uno (ver `Layer.ts:14`, `Tier.ts:18`).
 
 **Routes arrecifes** (mounted under `/api/v1/observatory/arrecifes/`):
-- Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`
-- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW)
+- Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`, `/layers[?provider=&category=&kind=]`, `/layers/:id` (acepta id numérico o slug), `/layers/:id/download` (sirve archivo o redirect 302), `/tiers` (acepta id o slug)
+- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors|layers|tiers}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW), `POST /admin/layers/:id/upload` (multer multipart "file", ≤50 MB, GeoJSON/KML/KMZ/Shapefile zip/GeoTIFF/CSV)
 - Submission ciudadana: `POST /observations` (sin auth → estado `pending`)
 
-**Migraciones:**
-- `1722000000000-CreateArrecifesTables.ts` — crea las 5 tablas (`obs_reefs`, `obs_conflicts`, `obs_contributors`, `obs_observations`, `obs_bleaching_alerts`) con índices (ocean, status, intensity, tier, etc.). Idempotente vía `SHOW TABLES LIKE`.
-- `1723000000000-AddGalleryToObsReefs.ts` — añade columna `gallery JSON NULL` a `obs_reefs`. Idempotente vía `SHOW COLUMNS LIKE`.
+**File uploads** (`modules/observatory/arrecifes/arrecifes.upload.ts`): multer con disk storage en `uploads/layers/`, filename `{uuid}.{ext}`. Validación combinada por mime + extensión (multer reporta mimes inconsistentes para shapefile zip). El servicio borra el archivo previo al reemplazar y al hacer DELETE de la layer.
 
-**Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`):
-- `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors (con tiers bronze→coral) + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef
+**Migraciones:**
+- `1722000000000-CreateArrecifesTables.ts` — crea las 5 tablas iniciales (`obs_reefs`, `obs_conflicts`, `obs_contributors`, `obs_observations`, `obs_bleaching_alerts`) con índices (ocean, status, intensity, tier, etc.). Idempotente vía `SHOW TABLES LIKE`.
+- `1723000000000-AddGalleryToObsReefs.ts` — añade columna `gallery JSON NULL` a `obs_reefs`. Idempotente vía `SHOW COLUMNS LIKE`.
+- Las tablas `obs_layers`, `obs_tiers` y la columna `obs_conflicts.geometry` se crean por auto-sync de TypeORM en dev (no hay migración explícita aún). Para producción conviene generar `npm run migration:generate` antes de deploy.
+
+**Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
+- `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors (con tiers bronze→coral) + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`)
 - `arrecifes-observations.seed.ts` — 6 observations cubriendo todo el workflow (1 pending, 1 in_review, 2 validated, 1 rejected, 1 needs_more_info) — demo de la cola de revisión
 - `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
-- `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`)
+- `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`)
 
 ### Observatory API Routes
 Base: `/api/v1/observatory`

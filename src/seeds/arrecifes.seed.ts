@@ -2,6 +2,8 @@ import { AppDataSource } from '../ormconfig';
 import { ObsReef } from '../entities/observatory/Reef';
 import { ObsContributor } from '../entities/observatory/Contributor';
 import { ObsConflict } from '../entities/observatory/Conflict';
+import { ObsTier } from '../entities/observatory/Tier';
+import { ObsLayer } from '../entities/observatory/Layer';
 
 const G = (ids: string[]): string[] =>
   ids.map((id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=900&q=80`);
@@ -58,10 +60,49 @@ const CONFLICTS = [
   { id: 6, title: 'SCTLD: enfermedad de pérdida de tejido coralino', summary: 'La enfermedad SCTLD ha matado >50% de algunas especies coralinas en el SAM desde 2018.', fullStory: 'La Stony Coral Tissue Loss Disease llegó al Caribe mexicano en 2018 y se ha propagado por todo el SAM. Afecta a más de 25 especies de coral y tiene tasas de mortalidad >70% en colonias infectadas.', reefIds: [1, 2, 3, 5], state: 'Quintana Roo', threats: ['disease_outbreak'], intensity: 'critical', status: 'ongoing', affectedSpecies: ['Pseudodiploria strigosa', 'Colpophyllia natans', 'Dichocoenia stokesii'], startedAt: '2018-07-01', drivers: ['Origen incierto (probablemente aguas de lastre)'], resistance: ['CONANP', 'Healthy Reefs Initiative', 'Universidades'], mediaUrls: [], contributorId: 8 },
 ];
 
+// 13 capas abiertas iniciales (espejo de `data/layers.ts` del frontend).
+// kind = 'external_url' → metadata + sourceUrl/wmsUrl. El admin puede subir
+// archivos vía POST /admin/layers/:id/upload (kind cambia a 'uploaded_file').
+const LAYERS = [
+  { slug: 'noaa-crw-dhw-5km', title: 'NOAA Coral Reef Watch — Degree Heating Weeks (5 km)', description: 'Acumulación de estrés térmico de 12 semanas para predicción de blanqueamiento. Producto operacional global, actualizado diariamente.', kind: 'external_url', provider: 'noaa', providerLabel: 'NOAA Coral Reef Watch', category: 'thermal_stress', format: 'geotiff', resolution: '5 km', cadence: 'diaria', coverage: 'global', license: 'Public Domain (NOAA)', attribution: 'NOAA Coral Reef Watch. (2024). Daily Global 5km Satellite Coral Bleaching Heat Stress Monitoring. NOAA/NESDIS.', sourceUrl: 'https://coralreefwatch.noaa.gov/product/5km/index.php', downloadUrl: 'https://coralreefwatch.noaa.gov/data/5km/', previewUrl: 'https://coralreefwatch.noaa.gov/product/5km/v3.1_op/composite/', lastUpdated: '2026-04-27', active: true, sortOrder: 1 },
+  { slug: 'noaa-crw-bleaching-alert', title: 'NOAA CRW — Bleaching Alert Area (5 km)', description: 'Niveles de alerta operacionales (No Stress / Watch / Warning / Alert 1 / Alert 2) basados en SST y DHW.', kind: 'external_url', provider: 'noaa', providerLabel: 'NOAA Coral Reef Watch', category: 'thermal_stress', format: 'wms', resolution: '5 km', cadence: 'diaria', coverage: 'global', license: 'Public Domain (NOAA)', attribution: 'NOAA Coral Reef Watch (2024).', sourceUrl: 'https://coralreefwatch.noaa.gov/product/5km/index_5km_baa-max-7d.php', wmsUrl: 'https://coastwatch.pfeg.noaa.gov/erddap/wms/NOAA_DHW/request', wmsLayerName: 'NOAA_DHW:CRW_BAA_max_7d', overlayOpacity: 0.65, lastUpdated: '2026-04-27', active: true, sortOrder: 2 },
+  { slug: 'nasa-modis-sst', title: 'NASA MODIS — Sea Surface Temperature (Aqua, 4 km)', description: 'Temperatura superficial del mar diurna y nocturna. Producto MYD28 / MOD28 procesado por OB.DAAC.', kind: 'external_url', provider: 'nasa', providerLabel: 'NASA OB.DAAC', category: 'thermal_stress', format: 'geotiff', resolution: '4 km', cadence: 'diaria', coverage: 'global', license: 'Public Domain (NASA)', attribution: 'NASA Goddard Space Flight Center, OB.DAAC, MODIS-Aqua SST L3.', sourceUrl: 'https://oceancolor.gsfc.nasa.gov/l3/', lastUpdated: '2026-04-27', active: true, sortOrder: 3 },
+  { slug: 'nasa-pace-chla', title: 'NASA PACE — Clorofila-a (1 km)', description: 'Concentración de clorofila-a derivada del satélite PACE (Plankton, Aerosol, Cloud, ocean Ecosystem). Indicador de productividad y aportes nutritivos.', kind: 'external_url', provider: 'nasa', providerLabel: 'NASA PACE', category: 'water_quality', format: 'geotiff', resolution: '1 km', cadence: 'diaria', coverage: 'global', license: 'Public Domain (NASA)', attribution: 'NASA PACE Mission, OCI L2 OC products.', sourceUrl: 'https://pace.oceansciences.org/data.htm', lastUpdated: '2026-04-25', active: true, sortOrder: 4 },
+  { slug: 'esa-sentinel2-l2a', title: 'ESA Sentinel-2 L2A — Reflectancia superficial (10 m)', description: 'Imágenes ópticas multiespectrales para mapeo de hábitats bentónicos someros, sargazo y turbidez.', kind: 'external_url', provider: 'esa_copernicus', providerLabel: 'ESA Copernicus', category: 'benthic_habitat', format: 'cog', resolution: '10 m', cadence: '5 días', coverage: 'global', license: 'Copernicus Open Data', attribution: 'Contains modified Copernicus Sentinel-2 L2A data (2024).', sourceUrl: 'https://dataspace.copernicus.eu/', lastUpdated: '2026-04-26', active: true, sortOrder: 5 },
+  { slug: 'allen-coral-atlas-benthic', title: 'Allen Coral Atlas — Mapas bentónicos globales', description: 'Clasificación bentónica global a 5 m derivada de Planet Dove + machine learning. Coral/algas, roca, escombros, arena, pasto marino, microalgas.', kind: 'external_url', provider: 'allen_coral_atlas', providerLabel: 'Allen Coral Atlas', category: 'benthic_habitat', format: 'geotiff', resolution: '5 m', cadence: 'estática (v2.0)', coverage: 'global', license: 'CC BY 4.0', attribution: 'Allen Coral Atlas (2022). Imagery, maps and monitoring of the world\'s tropical coral reefs. Arizona State University.', sourceUrl: 'https://allencoralatlas.org/', downloadUrl: 'https://allencoralatlas.org/atlas/', lastUpdated: '2024-12-01', active: true, sortOrder: 6 },
+  { slug: 'gebco-bathymetry', title: 'GEBCO 2024 — Batimetría global (15 arcsec)', description: 'Modelo digital de elevación oceánica. Profundidad referencia para hábitats arrecifales.', kind: 'external_url', provider: 'noaa', providerLabel: 'GEBCO / IHO-IOC', category: 'bathymetry', format: 'geotiff', resolution: '~450 m', cadence: 'anual', coverage: 'global', license: 'CC BY 4.0', attribution: 'GEBCO Compilation Group (2024). GEBCO 2024 Grid.', sourceUrl: 'https://www.gebco.net/', wmsUrl: 'https://wms.gebco.net/mapserv', wmsLayerName: 'GEBCO_LATEST', overlayOpacity: 0.55, lastUpdated: '2024-09-01', active: false, sortOrder: 7 },
+  { slug: 'conabio-anp-marinas', title: 'CONABIO — Áreas Naturales Protegidas marinas', description: 'Polígonos oficiales de ANP federales y estatales con componente marino.', kind: 'external_url', provider: 'conabio', providerLabel: 'CONABIO', category: 'protected_areas', format: 'shapefile', coverage: 'national', license: 'CC BY 4.0', attribution: 'CONABIO (2024). Áreas Naturales Protegidas Federales de México.', sourceUrl: 'http://geoportal.conabio.gob.mx/', downloadUrl: 'http://geoportal.conabio.gob.mx/metadatos/doc/html/anpfedmay24gw.html', wmsUrl: 'http://geoportal.conabio.gob.mx/geoserver/wms', wmsLayerName: 'CONABIO:anpfedmay24gw', overlayOpacity: 0.5, lastUpdated: '2024-05-01', active: true, sortOrder: 8 },
+  { slug: 'conabio-arrecifes-coralinos', title: 'CONABIO — Arrecifes coralinos de México', description: 'Inventario nacional de formaciones arrecifales (Caribe, Golfo de México, Pacífico).', kind: 'external_url', provider: 'conabio', providerLabel: 'CONABIO', category: 'benthic_habitat', format: 'shapefile', coverage: 'national', license: 'CC BY 4.0', attribution: 'CONABIO (2018). Arrecifes coralinos de México. Geoportal SNIB.', sourceUrl: 'http://geoportal.conabio.gob.mx/', lastUpdated: '2018-12-01', active: true, sortOrder: 9 },
+  { slug: 'conanp-decretos', title: 'CONANP — Decretos y zonificación', description: 'Zonificación interna de cada ANP marina (núcleo, amortiguamiento, uso restringido).', kind: 'external_url', provider: 'conanp', providerLabel: 'CONANP', category: 'protected_areas', format: 'shapefile', coverage: 'national', license: 'Datos Abiertos México', attribution: 'CONANP (2024). Comisión Nacional de Áreas Naturales Protegidas.', sourceUrl: 'https://www.gob.mx/conanp', lastUpdated: '2024-08-15', active: false, sortOrder: 10 },
+  { slug: 'gfw-fishing-effort', title: 'Global Fishing Watch — Esfuerzo pesquero (AIS)', description: 'Horas de pesca aparente derivadas de AIS. Útil para detectar pesca dentro de ANP.', kind: 'external_url', provider: 'global_fishing_watch', providerLabel: 'Global Fishing Watch', category: 'fishing_pressure', format: 'geotiff', resolution: '0.01°', cadence: 'diaria', coverage: 'global', license: 'CC BY-NC 4.0', attribution: 'Global Fishing Watch (2024). Apparent Fishing Effort.', sourceUrl: 'https://globalfishingwatch.org/data-download/', lastUpdated: '2026-04-26', active: false, sortOrder: 11 },
+  { slug: 'noaa-sargassum-watch', title: 'NOAA / USF — Sargassum Watch System (1 km)', description: 'Detección semanal de sargazo flotante en el Caribe y Golfo. MODIS + VIIRS.', kind: 'external_url', provider: 'noaa', providerLabel: 'NOAA / Univ. South Florida OOL', category: 'water_quality', format: 'geotiff', resolution: '1 km', cadence: 'semanal', coverage: 'regional', license: 'Public Domain (NOAA)', attribution: 'USF Optical Oceanography Lab / NOAA SaWS (2024).', sourceUrl: 'https://optics.marine.usf.edu/projects/saws.html', lastUpdated: '2026-04-22', active: true, sortOrder: 12 },
+  { slug: 'inegi-uso-suelo-costero', title: 'INEGI — Uso del suelo y vegetación costera (Serie VII)', description: 'Cobertura terrestre 1:250,000 incluyendo manglares, dunas y cuerpos de agua.', kind: 'external_url', provider: 'inegi', providerLabel: 'INEGI', category: 'land_use', format: 'shapefile', coverage: 'national', license: 'Datos Abiertos México', attribution: 'INEGI (2023). Carta de Uso del Suelo y Vegetación, Serie VII.', sourceUrl: 'https://www.inegi.org.mx/temas/usosuelo/', lastUpdated: '2023-06-01', active: false, sortOrder: 13 },
+];
+
+const TIERS = [
+  { slug: 'bronze', label: 'Bronce', minScore: 0, maxScore: 199, color: 'amber', icon: 'lucide:medal',
+    description: 'Inicial. Hasta 199 puntos.',
+    requirements: 'Primer aporte validado.', sortOrder: 1 },
+  { slug: 'silver', label: 'Plata', minScore: 200, maxScore: 499, color: 'slate', icon: 'lucide:medal',
+    description: '200–499 puntos.',
+    requirements: '30+ aportes validados.', sortOrder: 2 },
+  { slug: 'gold', label: 'Oro', minScore: 500, maxScore: 699, color: 'yellow', icon: 'lucide:medal',
+    description: '500–699 puntos.',
+    requirements: '60+ aportes, calidad ≥75%, 3+ meses activo.', sortOrder: 3 },
+  { slug: 'platinum', label: 'Platino', minScore: 700, maxScore: 999, color: 'cyan', icon: 'lucide:gem',
+    description: '700–999 puntos.',
+    requirements: '90+ aportes, calidad ≥85%, 6+ meses activo.', sortOrder: 4 },
+  { slug: 'coral', label: 'Coral', minScore: 1000, maxScore: null, color: 'coral', icon: 'lucide:crown',
+    description: 'Top 1%. 1000+ puntos.',
+    requirements: 'Identidad y trayectoria verificadas.', sortOrder: 5 },
+];
+
 export async function seedArrecifes() {
   const reefRepo = AppDataSource.getRepository(ObsReef);
   const contributorRepo = AppDataSource.getRepository(ObsContributor);
   const conflictRepo = AppDataSource.getRepository(ObsConflict);
+  const tierRepo = AppDataSource.getRepository(ObsTier);
+  const layerRepo = AppDataSource.getRepository(ObsLayer);
 
   // Reefs
   for (const r of REEFS) {
@@ -97,5 +138,29 @@ export async function seedArrecifes() {
     }
   }
 
-  console.log(`✅ Seeded arrecifes: ${REEFS.length} reefs, ${CONTRIBUTORS.length} contributors, ${CONFLICTS.length} conflicts`);
+  // Tiers (escala reputacional)
+  for (const t of TIERS) {
+    const existing = await tierRepo.findOne({ where: { slug: t.slug } });
+    if (existing) {
+      Object.assign(existing, t);
+      await tierRepo.save(existing);
+    } else {
+      await tierRepo.save(tierRepo.create(t as any));
+    }
+  }
+
+  // Layers (catálogo de capas abiertas — espejo del frontend mock)
+  for (const l of LAYERS) {
+    const existing = await layerRepo.findOne({ where: { slug: l.slug } });
+    if (existing) {
+      Object.assign(existing, l);
+      await layerRepo.save(existing);
+    } else {
+      await layerRepo.save(layerRepo.create(l as any));
+    }
+  }
+
+  console.log(
+    `✅ Seeded arrecifes: ${REEFS.length} reefs, ${CONTRIBUTORS.length} contributors, ${CONFLICTS.length} conflicts, ${TIERS.length} tiers, ${LAYERS.length} layers`,
+  );
 }

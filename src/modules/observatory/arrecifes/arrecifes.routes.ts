@@ -9,7 +9,10 @@ import {
   observationSubmitSchema,
   observationReviewSchema,
   bleachingAlertSchema,
+  layerSchema,
+  tierSchema,
 } from './arrecifes.validation';
+import { uploadLayerFile } from './arrecifes.upload';
 import { asyncHandler } from '../../../utils/asyncHandler';
 
 const router = Router({ mergeParams: true });
@@ -76,5 +79,30 @@ router.post('/arrecifes/observations', validate(observationSubmitSchema), asyncH
 // ─── Bleaching Alerts ───
 router.get('/arrecifes/alerts/bleaching', asyncHandler(c.listAlerts));
 router.post('/arrecifes/admin/alerts/bleaching', scope, auth, validate(bleachingAlertSchema), asyncHandler(c.createAlert));
+
+// ─── Layers ───
+// Admin CRUD
+router.get('/arrecifes/admin/layers', scope, auth, asyncHandler(c.listLayers));
+router.get('/arrecifes/admin/layers/:id', scope, auth, asyncHandler(c.getLayer));
+router.post('/arrecifes/admin/layers', scope, auth, validate(layerSchema), asyncHandler(c.createLayer));
+router.patch('/arrecifes/admin/layers/:id', scope, auth, asyncHandler(c.updateLayer));
+router.delete('/arrecifes/admin/layers/:id', scope, auth, asyncHandler(c.deleteLayer));
+// Upload binario (multer; el field se llama "file")
+router.post('/arrecifes/admin/layers/:id/upload', scope, auth, uploadLayerFile, asyncHandler(c.uploadLayerFile));
+
+// Público — catálogo + descarga
+router.get('/arrecifes/layers', asyncHandler(c.listLayersPublic));
+router.get('/arrecifes/layers/:id', asyncHandler(c.getLayer));
+router.get('/arrecifes/layers/:id/download', asyncHandler(c.downloadLayer));
+
+// ─── Tiers (escala reputacional) ───
+router.get('/arrecifes/admin/tiers', scope, auth, asyncHandler(c.listTiers));
+router.get('/arrecifes/admin/tiers/:id', scope, auth, asyncHandler(c.getTier));
+router.post('/arrecifes/admin/tiers', scope, auth, validate(tierSchema), asyncHandler(c.createTier));
+router.patch('/arrecifes/admin/tiers/:id', scope, auth, asyncHandler(c.updateTier));
+router.delete('/arrecifes/admin/tiers/:id', scope, auth, asyncHandler(c.deleteTier));
+
+router.get('/arrecifes/tiers', asyncHandler(c.listTiersPublic));
+router.get('/arrecifes/tiers/:id', asyncHandler(c.getTier));
 
 export default router;

@@ -59,6 +59,11 @@ export class ObsConflict {
   @Column({ type: 'json', nullable: true })
   mediaUrls!: string[] | null;
 
+  // GeoJSON Geometry (Point | LineString | Polygon | Multi*) — opcional.
+  // Si no se provee, el conflicto se ubica vía reefIds.
+  @Column({ type: 'json', nullable: true })
+  geometry!: { type: string; coordinates: unknown } | null;
+
   @Column({ type: 'int', nullable: true })
   contributorId!: number | null;
 
