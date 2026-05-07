@@ -8,8 +8,10 @@ import { ObsObservation } from '../../../entities/observatory/Observation';
 import { ObsBleachingAlert } from '../../../entities/observatory/BleachingAlert';
 import { ObsLayer } from '../../../entities/observatory/Layer';
 import { ObsTier } from '../../../entities/observatory/Tier';
+import { ObsReefMetricSnapshot } from '../../../entities/observatory/ReefMetricSnapshot';
 import { AppError } from '../../../middleware/errorHandler.middleware';
 import { fetchReefClimate } from './nasaPower.service';
+import { computeCoralHealthIndex } from './coralHealthIndex';
 
 const reefRepo = () => AppDataSource.getRepository(ObsReef);
 const conflictRepo = () => AppDataSource.getRepository(ObsConflict);
@@ -18,6 +20,7 @@ const observationRepo = () => AppDataSource.getRepository(ObsObservation);
 const alertRepo = () => AppDataSource.getRepository(ObsBleachingAlert);
 const layerRepo = () => AppDataSource.getRepository(ObsLayer);
 const tierRepo = () => AppDataSource.getRepository(ObsTier);
+const snapshotRepo = () => AppDataSource.getRepository(ObsReefMetricSnapshot);
 
 const UPLOADS_ROOT = path.join(__dirname, '../../../../uploads');
 
@@ -179,6 +182,90 @@ export class ArrecifesService {
       failed: results.filter((x) => !x.ok).length,
       results,
     };
+  }
+
+  // ─────────────── Reef metric snapshots (serie de tiempo) ───────────────
+  // Captura el estado actual de los 12 arrecifes y lo persiste como una fila
+  // por reef. Idempotente para una misma fecha: si ya existe un snapshot del
+  // día para un reef, se actualiza en lugar de crear duplicado.
+  async snapshotAllReefs(source: 'manual' | 'cron' | 'seed' = 'manual') {
+    const reefs = await reefRepo().find();
+    if (reefs.length === 0) return { count: 0, capturedAt: null };
+
+    // Última alerta por reef (la más reciente por observedAt) — N+1 evitado vía
+    // un solo query y mapeo en memoria.
+    const allAlerts = await alertRepo().find({ order: { observedAt: 'DESC' } });
+    const latestByReef = new Map<number, ObsBleachingAlert>();
+    for (const a of allAlerts) {
+      if (!latestByReef.has(a.reefId)) latestByReef.set(a.reefId, a);
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const rows: ObsReefMetricSnapshot[] = [];
+
+    for (const r of reefs) {
+      const alert = latestByReef.get(r.id) || null;
+      const chi = computeCoralHealthIndex({
+        liveCoralCover: r.liveCoralCover != null ? Number(r.liveCoralCover) : null,
+        dhw: alert ? Number(alert.dhw) : null,
+        protection: r.protection,
+        threats: r.threats,
+        speciesRichness: r.speciesRichness,
+      });
+
+      // Upsert por (reefId, capturedAt)
+      const existing = await snapshotRepo().findOne({
+        where: { reefId: r.id, capturedAt: today },
+      });
+      const payload: Partial<ObsReefMetricSnapshot> = {
+        reefId: r.id,
+        capturedAt: today,
+        liveCoralCover: r.liveCoralCover != null ? Number(r.liveCoralCover) : null,
+        dhw: alert && alert.dhw != null ? Number(alert.dhw) : null,
+        sst: alert && alert.sst != null ? Number(alert.sst) : null,
+        sstAnomaly: alert && alert.sstAnomaly != null ? Number(alert.sstAnomaly) : null,
+        observationsCount: r.observations || 0,
+        healthIndex: Math.round(chi * 100) / 100,
+        source,
+      };
+      if (existing) {
+        Object.assign(existing, payload);
+        rows.push(await snapshotRepo().save(existing));
+      } else {
+        rows.push(await snapshotRepo().save(snapshotRepo().create(payload)));
+      }
+    }
+
+    return { count: rows.length, capturedAt: today, source };
+  }
+
+  // Serie de tiempo de un solo arrecife. `days` opcional limita la ventana.
+  async listReefMetrics(reefId: number, days?: number) {
+    const qb = snapshotRepo()
+      .createQueryBuilder('s')
+      .where('s.reefId = :reefId', { reefId })
+      .orderBy('s.capturedAt', 'ASC');
+    if (days && days > 0) {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      qb.andWhere('s.capturedAt >= :since', { since: since.toISOString().slice(0, 10) });
+    }
+    return qb.getMany();
+  }
+
+  // Bulk: todos los reefs en una sola llamada — alimenta el panel de tendencias
+  // sin tener que hacer 12 round-trips.
+  async listAllReefMetrics(days?: number) {
+    const qb = snapshotRepo()
+      .createQueryBuilder('s')
+      .orderBy('s.reefId', 'ASC')
+      .addOrderBy('s.capturedAt', 'ASC');
+    if (days && days > 0) {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      qb.where('s.capturedAt >= :since', { since: since.toISOString().slice(0, 10) });
+    }
+    return qb.getMany();
   }
 
   // ──────────────────────────── Conflicts ────────────────────────────

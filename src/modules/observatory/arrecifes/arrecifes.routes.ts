@@ -41,6 +41,11 @@ router.delete('/arrecifes/admin/reefs/:id', scope, auth, asyncHandler(c.deleteRe
 router.post('/arrecifes/admin/reefs/refresh-climate', scope, auth, asyncHandler(c.refreshAllReefClimate));
 router.post('/arrecifes/admin/reefs/:id/refresh-climate', scope, auth, asyncHandler(c.refreshReefClimate));
 
+// ── Snapshots / serie de tiempo (admin trigger + lecturas públicas) ──
+router.post('/arrecifes/admin/reefs/snapshot', scope, auth, asyncHandler(c.snapshotAllReefs));
+router.get('/arrecifes/reefs/metrics', asyncHandler(c.listAllReefMetrics));
+router.get('/arrecifes/reefs/:id/metrics', asyncHandler(c.listReefMetrics));
+
 // Public read (visible + not archived)
 router.get('/arrecifes/reefs', asyncHandler(c.listReefsPublic));
 router.get('/arrecifes/reefs/:id', asyncHandler(c.getReef));

@@ -76,6 +76,24 @@ export class ArrecifesController {
     res.json({ success: true, data: result });
   }
 
+  async snapshotAllReefs(_req: Request, res: Response) {
+    const result = await service.snapshotAllReefs('manual');
+    res.json({ success: true, data: result });
+  }
+
+  async listReefMetrics(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const days = req.query.days ? Number(req.query.days) : undefined;
+    const items = await service.listReefMetrics(id, days);
+    res.json({ success: true, items });
+  }
+
+  async listAllReefMetrics(req: Request, res: Response) {
+    const days = req.query.days ? Number(req.query.days) : undefined;
+    const items = await service.listAllReefMetrics(days);
+    res.json({ success: true, items });
+  }
+
   // ─── Conflicts ───
   async listConflicts(req: Request, res: Response) {
     const { page, limit, search, state, intensity, status, visible, archived } = req.query;
