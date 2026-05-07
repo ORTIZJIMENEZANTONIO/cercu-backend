@@ -608,6 +608,44 @@ Trigger: manual desde el botón **"Ejecutar Scraper"** del admin
 se dejó como manual para que el admin pueda revisar las novedades cuando tenga
 capacidad de validar.
 
+### Reef News Scraper (pipeline multi-fuente, arrecifes)
+**Directory:** `src/modules/observatory/arrecifes/reefNews-scraper.service.ts`
+**Trigger:** `POST /api/v1/observatory/arrecifes/admin/news/scraper/run`
+
+Pipeline ordenado por prioridad — la primera fuente gana en colisiones de
+`urlHash` durante una misma corrida:
+
+1. **Mongabay México** — `https://es.mongabay.com/list/mexico/`. Feed grid,
+   muchos artículos por corrida (~24 ítems). Se filtran con keywords estrictas
+   a corales/marino mexicano (`arrecife`, `coral`, `blanqueamiento`, `sargazo`,
+   `Cabo Pulmo`, `Revillagigedo`, `vaquita`, `NOAA CRW`, etc.). Si nada
+   matchea no inserta nada — diferente a humedales que cae al set completo.
+2. **The Nature Conservancy** — single-page articles editoriales como
+   `/buenas-noticias-del-ambiente/`. Extracción vía Open Graph meta tags
+   (`og:title`, `og:description`, `og:image`, `article:published_time`).
+   `bypassRelevanceFilter: true` — al ser curada manualmente no aplica el
+   filtro de keywords. Re-correr no genera duplicados (urlHash). Para añadir
+   un nuevo artículo de TNC: agregar URL al array `TNC_URLS` en el service.
+3. (futuras fuentes con menor prioridad se concatenan al final del array
+   `SOURCES` del módulo)
+
+Cada item se normaliza al tipo `ScrapedItem { title, summary, url,
+publishedAt, author, image, source, bypassRelevanceFilter? }` antes de
+insertarse como `ObsReefNewsProspect` con `status='pending'`. El admin
+aprueba/rechaza desde `/admin/news` tab Prospectos; al aprobar la UI
+pre-rellena el form del artículo con `<p><strong>Fuente:</strong> <a
+href="..." target="_blank">{source}</a></p>` para preservar la atribución.
+
+Respuesta del endpoint:
+```json
+{ "scraped": 25, "inserted": 14, "skippedDuplicates": 8,
+  "skippedIrrelevant": 3,
+  "bySource": {
+    "Mongabay Latam": { "scraped": 24, "inserted": 13 },
+    "The Nature Conservancy": { "scraped": 1, "inserted": 1 }
+  } }
+```
+
 ### Observatory Events Module (tracking + analytics)
 **Directory:** `src/modules/observatory/events/`
 **Mounted at:** `/api/v1` (paths internos arrancan en `/observatory/:observatory/...`)

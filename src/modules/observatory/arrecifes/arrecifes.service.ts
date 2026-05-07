@@ -9,9 +9,12 @@ import { ObsBleachingAlert } from '../../../entities/observatory/BleachingAlert'
 import { ObsLayer } from '../../../entities/observatory/Layer';
 import { ObsTier } from '../../../entities/observatory/Tier';
 import { ObsReefMetricSnapshot } from '../../../entities/observatory/ReefMetricSnapshot';
+import { ObsReefNews } from '../../../entities/observatory/ReefNews';
+import { ObsReefNewsProspect } from '../../../entities/observatory/ReefNewsProspect';
 import { AppError } from '../../../middleware/errorHandler.middleware';
 import { fetchReefClimate } from './nasaPower.service';
 import { computeCoralHealthIndex } from './coralHealthIndex';
+import { ingestReefNewsProspectos } from './reefNews-scraper.service';
 
 const reefRepo = () => AppDataSource.getRepository(ObsReef);
 const conflictRepo = () => AppDataSource.getRepository(ObsConflict);
@@ -21,6 +24,8 @@ const alertRepo = () => AppDataSource.getRepository(ObsBleachingAlert);
 const layerRepo = () => AppDataSource.getRepository(ObsLayer);
 const tierRepo = () => AppDataSource.getRepository(ObsTier);
 const snapshotRepo = () => AppDataSource.getRepository(ObsReefMetricSnapshot);
+const reefNewsRepo = () => AppDataSource.getRepository(ObsReefNews);
+const reefNewsProspectRepo = () => AppDataSource.getRepository(ObsReefNewsProspect);
 
 const UPLOADS_ROOT = path.join(__dirname, '../../../../uploads');
 
@@ -651,5 +656,127 @@ export class ArrecifesService {
     const ext = layer.downloadUrl || layer.sourceUrl;
     if (!ext) throw new AppError('La capa no tiene URL de descarga', 404);
     return { kind: 'redirect', url: ext };
+  }
+
+  // ────────────────────── Reef News (artículos editoriales) ──────────────────────
+  // Genera slug desde el título; añade sufijo numérico si choca.
+  private async generateReefNewsSlug(title: string, excludeId?: number): Promise<string> {
+    const base =
+      title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 80) || 'articulo';
+    let slug = base;
+    let suffix = 1;
+    while (true) {
+      const existing = await reefNewsRepo().findOne({ where: { slug } });
+      if (!existing || existing.id === excludeId) break;
+      suffix++;
+      slug = `${base}-${suffix}`;
+    }
+    return slug;
+  }
+
+  async listReefNews(
+    { page = 1, limit = 50 }: PageOpts,
+    filters: { search?: string; tag?: string; visible?: boolean; archived?: boolean; publicOnly?: boolean } = {},
+  ) {
+    const qb = reefNewsRepo().createQueryBuilder('n');
+    if (filters.publicOnly) {
+      qb.andWhere('(n.visible IS NULL OR n.visible = 1)');
+      qb.andWhere('(n.archived IS NULL OR n.archived = 0)');
+    } else {
+      if (filters.visible !== undefined) qb.andWhere('n.visible = :v', { v: filters.visible });
+      if (filters.archived !== undefined) qb.andWhere('n.archived = :a', { a: filters.archived });
+    }
+    if (filters.search) {
+      qb.andWhere('(n.title LIKE :s OR n.summary LIKE :s)', { s: `%${filters.search}%` });
+    }
+    if (filters.tag) {
+      qb.andWhere(`JSON_CONTAINS(n.tags, JSON_QUOTE(:tag))`, { tag: filters.tag });
+    }
+    qb.orderBy('n.publishedAt', 'DESC').addOrderBy('n.id', 'DESC');
+    qb.skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
+    return { items, pagination: { page, limit, total } };
+  }
+
+  async getReefNews(idOrSlug: number | string) {
+    const where = typeof idOrSlug === 'number' ? { id: idOrSlug } : { slug: idOrSlug };
+    const r = await reefNewsRepo().findOne({ where });
+    if (!r) throw new AppError('Artículo no encontrado', 404);
+    return r;
+  }
+
+  async createReefNews(data: Partial<ObsReefNews>) {
+    if (!data.title) throw new AppError('Falta título', 400);
+    const slug = data.slug || (await this.generateReefNewsSlug(data.title));
+    return reefNewsRepo().save(reefNewsRepo().create({ ...data, slug }));
+  }
+
+  async updateReefNews(id: number, data: Partial<ObsReefNews>) {
+    const r = (await this.getReefNews(id)) as ObsReefNews;
+    if (data.title && data.title !== r.title && !data.slug) {
+      data.slug = await this.generateReefNewsSlug(data.title, id);
+    }
+    Object.assign(r, data);
+    return reefNewsRepo().save(r);
+  }
+
+  async deleteReefNews(id: number) {
+    const r = (await this.getReefNews(id)) as ObsReefNews;
+    await reefNewsRepo().remove(r);
+    return { deleted: true };
+  }
+
+  // ─── Prospects (cola scraper) ───
+  async listReefNewsProspects(status?: string, page = 1, limit = 50) {
+    const where: any = {};
+    if (status) where.status = status;
+    const [items, total] = await reefNewsProspectRepo().findAndCount({
+      where,
+      order: { id: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { items, pagination: { page, limit, total } };
+  }
+
+  async approveReefNewsProspect(id: number, adminId: string) {
+    const p = await reefNewsProspectRepo().findOne({ where: { id } });
+    if (!p) throw new AppError('Prospecto no encontrado', 404);
+    if (p.status !== 'pending') {
+      throw new AppError('Sólo se pueden aprobar prospectos pendientes', 400);
+    }
+    p.status = 'approved';
+    p.reviewedBy = adminId;
+    return reefNewsProspectRepo().save(p);
+  }
+
+  async rejectReefNewsProspect(id: number, adminId: string, notes: string) {
+    const p = await reefNewsProspectRepo().findOne({ where: { id } });
+    if (!p) throw new AppError('Prospecto no encontrado', 404);
+    if (p.status !== 'pending') {
+      throw new AppError('Sólo se pueden rechazar prospectos pendientes', 400);
+    }
+    p.status = 'rejected';
+    p.rejectionNotes = notes;
+    p.reviewedBy = adminId;
+    return reefNewsProspectRepo().save(p);
+  }
+
+  async runReefNewsScraper() {
+    const result = await ingestReefNewsProspectos();
+    return {
+      message: result.inserted > 0
+        ? `Scraper ejecutado: ${result.inserted} nuevo(s) prospecto(s).`
+        : 'Scraper ejecutado: sin novedades (todo ya estaba en la cola).',
+      source: 'mongabay-mexico',
+      ...result,
+    };
   }
 }

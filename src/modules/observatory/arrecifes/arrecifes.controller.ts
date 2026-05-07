@@ -349,4 +349,81 @@ export class ArrecifesController {
     const result = await service.deleteTier(Number(req.params.id));
     res.json({ success: true, data: result });
   }
+
+  // ─── Reef News (editorial) ───
+  async listReefNews(req: Request, res: Response) {
+    const { page, limit, search, tag, visible, archived } = req.query;
+    const result = await service.listReefNews(
+      { page: Number(page) || 1, limit: Number(limit) || 50 },
+      {
+        search: search as string,
+        tag: tag as string,
+        visible: parseBoolStr(visible) ? parseBoolStr(visible) === 'true' : undefined,
+        archived: parseBoolStr(archived) ? parseBoolStr(archived) === 'true' : undefined,
+      },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async listReefNewsPublic(req: Request, res: Response) {
+    const { page, limit, search, tag } = req.query;
+    const result = await service.listReefNews(
+      { page: Number(page) || 1, limit: Number(limit) || 50 },
+      { search: search as string, tag: tag as string, publicOnly: true },
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async getReefNews(req: Request, res: Response) {
+    const idOrSlug = /^\d+$/.test(req.params.id) ? Number(req.params.id) : req.params.id;
+    const result = await service.getReefNews(idOrSlug);
+    res.json({ success: true, data: result });
+  }
+
+  async createReefNews(req: Request, res: Response) {
+    const result = await service.createReefNews(req.body);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async updateReefNews(req: Request, res: Response) {
+    const result = await service.updateReefNews(Number(req.params.id), req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteReefNews(req: Request, res: Response) {
+    const result = await service.deleteReefNews(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  // ─── Reef News Prospects (cola scraper) ───
+  async listReefNewsProspects(req: Request, res: Response) {
+    const { status, page, limit } = req.query;
+    const result = await service.listReefNewsProspects(
+      status as string,
+      Number(page) || 1,
+      Number(limit) || 50,
+    );
+    res.json({ success: true, ...result });
+  }
+
+  async approveReefNewsProspect(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await service.approveReefNewsProspect(Number(req.params.id), adminId);
+    res.json({ success: true, data: result });
+  }
+
+  async rejectReefNewsProspect(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await service.rejectReefNewsProspect(
+      Number(req.params.id),
+      adminId,
+      req.body.notes || '',
+    );
+    res.json({ success: true, data: result });
+  }
+
+  async runReefNewsScraper(_req: Request, res: Response) {
+    const result = await service.runReefNewsScraper();
+    res.json({ success: true, data: result });
+  }
 }

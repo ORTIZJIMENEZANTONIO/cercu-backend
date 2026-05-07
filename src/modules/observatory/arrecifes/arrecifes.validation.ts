@@ -173,3 +173,24 @@ export const layerSchema = Joi.object({
   archived: Joi.boolean().default(false),
   sortOrder: Joi.number().integer().default(0),
 });
+
+// ── Reef News (artículos editoriales) ──
+export const reefNewsSchema = Joi.object({
+  title: Joi.string().max(255).required(),
+  slug: Joi.string().max(255).optional(),
+  summary: Joi.string().required(),
+  content: Joi.string().allow('', null).optional(),
+  author: Joi.string().max(150).required(),
+  publishedAt: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  tags: Joi.array().items(Joi.string()).optional(),
+  image: Joi.string().uri().allow('', null).optional(),
+  imageCredit: Joi.string().allow('', null).optional(),
+  sourceUrl: Joi.string().uri().allow('', null).optional(),
+  source: Joi.string().allow('', null).optional(),
+  visible: Joi.boolean().default(true),
+  archived: Joi.boolean().default(false),
+});
+
+export const reefNewsProspectRejectSchema = Joi.object({
+  notes: Joi.string().max(500).required(),
+});

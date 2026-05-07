@@ -11,6 +11,8 @@ import {
   bleachingAlertSchema,
   layerSchema,
   tierSchema,
+  reefNewsSchema,
+  reefNewsProspectRejectSchema,
 } from './arrecifes.validation';
 import { uploadLayerFile } from './arrecifes.upload';
 import { asyncHandler } from '../../../utils/asyncHandler';
@@ -111,5 +113,23 @@ router.delete('/arrecifes/admin/tiers/:id', scope, auth, asyncHandler(c.deleteTi
 
 router.get('/arrecifes/tiers', asyncHandler(c.listTiersPublic));
 router.get('/arrecifes/tiers/:id', asyncHandler(c.getTier));
+
+// ─── Reef News (editorial) ───
+// Admin CRUD
+router.get('/arrecifes/admin/news', scope, auth, asyncHandler(c.listReefNews));
+router.get('/arrecifes/admin/news/:id', scope, auth, asyncHandler(c.getReefNews));
+router.post('/arrecifes/admin/news', scope, auth, validate(reefNewsSchema), asyncHandler(c.createReefNews));
+router.patch('/arrecifes/admin/news/:id', scope, auth, asyncHandler(c.updateReefNews));
+router.delete('/arrecifes/admin/news/:id', scope, auth, asyncHandler(c.deleteReefNews));
+
+// Prospects + scraper trigger
+router.get('/arrecifes/admin/news/prospects/list', scope, auth, asyncHandler(c.listReefNewsProspects));
+router.post('/arrecifes/admin/news/prospects/:id/approve', scope, auth, asyncHandler(c.approveReefNewsProspect));
+router.post('/arrecifes/admin/news/prospects/:id/reject', scope, auth, validate(reefNewsProspectRejectSchema), asyncHandler(c.rejectReefNewsProspect));
+router.post('/arrecifes/admin/news/scraper/run', scope, auth, asyncHandler(c.runReefNewsScraper));
+
+// Public read (visible + not archived)
+router.get('/arrecifes/news', asyncHandler(c.listReefNewsPublic));
+router.get('/arrecifes/news/:id', asyncHandler(c.getReefNews));
 
 export default router;
