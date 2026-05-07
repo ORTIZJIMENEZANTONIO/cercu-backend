@@ -73,10 +73,12 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 51 TypeORM entities (34 core + 17 observatory)
-│   │   └── observatory/     # 17 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
-│   │                         # arrecifes: Reef, Conflict (con geometry GeoJSON), Contributor,
-│   │                         # Observation, BleachingAlert, Layer (CRUD + uploads), Tier (escalas))
+│   ├── entities/             # 52 TypeORM entities (34 core + 18 observatory)
+│   │   └── observatory/     # 18 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
+│   │                         # arrecifes: Reef (con climateData NASA POWER cacheada),
+│   │                         # Conflict (con geometry GeoJSON), Contributor, Observation,
+│   │                         # BleachingAlert, Layer (CRUD + uploads), Tier (escalas)) +
+│   │                         # InteractionEvent (tracking público anónimo de los 3 observatorios)
 │   ├── modules/
 │   │   ├── auth/             # Phone OTP + Google OAuth, token rotation
 │   │   ├── users/            # Profile management, change requests
@@ -95,6 +97,9 @@ cercu-backend/
 │   │       ├── admin/        # Prospect approval queue, content CRUD, CMS, notihumedal, admin users
 │   │       ├── detector/     # Geospatial detection (Overpass API + Turf.js)
 │   │       ├── ai/           # Roof analysis via Gemini 2.0 Flash (image → green roof aptitude)
+│   │       ├── arrecifes/    # CRUD reefs/conflicts/contributors/observations/layers/tiers +
+│   │       │                 # NASA POWER climatology integration (nasaPower.service.ts)
+│   │       ├── events/       # Tracking ingest + analytics summary (anónimo, multi-observatory)
 │   │       └── remote-sensing/  # Vegetation/water indices (GEE + Sentinel Hub + fallback)
 │   ├── jobs/                 # 4 cron jobs
 │   ├── seeds/                # Database seeding: categories, admin, test data, gamification, observatory-admin,
@@ -428,7 +433,7 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `ObsProspectoNoticia` (`obs_prospecto_noticias`) — scraped news prospects: titulo, resumen, url, fuente, fecha, estado (pendiente/aprobado/rechazado), notasRechazo, urlHash (SHA-256 for dedup), reviewedBy
 
 **Arrecifes** (módulo `modules/observatory/arrecifes/`):
-- `ObsReef` (`obs_reefs`) — name, state, ocean, region, benthicClasses (JSON), geomorphicClasses (JSON), area, depthRange (JSON tuple), protection, status, liveCoralCover, bleachingAlert, speciesRichness, threats (JSON), observations counter, lat/lng, description, hero, **gallery (JSON max 3)**, imageCredit, visible, archived
+- `ObsReef` (`obs_reefs`) — name, state, ocean, region, benthicClasses (JSON), geomorphicClasses (JSON), area, depthRange (JSON tuple), protection, status, liveCoralCover, bleachingAlert, speciesRichness, threats (JSON), observations counter, lat/lng, description, hero, **gallery (JSON max 3)**, imageCredit, visible, archived, **climateData (JSON ReefClimateData NASA POWER)**, **climateFetchedAt (datetime nullable)**
 - `ObsConflict` (`obs_conflicts`) — title, summary, fullStory (longtext), reefIds (JSON), state, threats (JSON), intensity, status, affectedCommunities (JSON), affectedSpecies (JSON), drivers (JSON), resistance (JSON), legalActions (JSON), mediaUrls (JSON), startedAt, **geometry (JSON GeoJSON Point/LineString/Polygon/Multi*)**, contributorId, visible, archived
 - `ObsContributor` (`obs_contributors`) — displayName, handle (unique), role, affiliation, bio, avatarUrl, state, joinedAt, tier (slug → `obs_tiers.slug`), reputationScore, validatedContributions, rejectedContributions, acceptanceRate, averageQuality, consecutiveMonthsActive, badges (JSON), publicProfile, verified, visible, archived
 - `ObsObservation` (`obs_observations`) — reefId (nullable), type, title, description, contributorId, capturedAt, submittedAt, lat/lng, attachments (JSON), tags (JSON), status (pending/in_review/validated/rejected/needs_more_info), reviewerId, reviewerNotes, validatedAt, qualityScore, visible, archived
@@ -440,8 +445,17 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 
 **Routes arrecifes** (mounted under `/api/v1/observatory/arrecifes/`):
 - Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`, `/layers[?provider=&category=&kind=]`, `/layers/:id` (acepta id numérico o slug), `/layers/:id/download` (sirve archivo o redirect 302), `/tiers` (acepta id o slug)
-- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors|layers|tiers}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW), `POST /admin/layers/:id/upload` (multer multipart "file", ≤50 MB, GeoJSON/KML/KMZ/Shapefile zip/GeoTIFF/CSV)
+- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors|layers|tiers}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW), `POST /admin/layers/:id/upload` (multer multipart "file", ≤50 MB, GeoJSON/KML/KMZ/Shapefile zip/GeoTIFF/CSV), `POST /admin/reefs/refresh-climate` (batch NASA POWER de los 12 reefs, secuencial 350 ms entre requests), `POST /admin/reefs/:id/refresh-climate` (un solo reef)
 - Submission ciudadana: `POST /observations` (sin auth → estado `pending`)
+
+**NASA POWER integration** (`modules/observatory/arrecifes/nasaPower.service.ts`):
+- Endpoint público sin auth: `https://power.larc.nasa.gov/api/temporal/climatology/point`
+- Parámetros: `ALLSKY_SFC_SW_DWN, T2M, PRECTOTCORR, WS10M, RH2M`, community `RE`
+- `fetchReefClimate(lat, lng)` con `AbortController` y timeout 20 s. Devuelve
+  `ReefClimateData` (medias anuales + serie mensual de 12 valores). Se guarda en
+  `ObsReef.climateData` (JSON) + `climateFetchedAt`. Idempotente — re-llamar
+  sobreescribe. Auto-sync TypeORM en dev; en prod requerirá migración manual para
+  añadir las dos columnas al servidor existente.
 
 **File uploads** (`modules/observatory/arrecifes/arrecifes.upload.ts`): multer con disk storage en `uploads/layers/`, filename `{uuid}.{ext}`. Validación combinada por mime + extensión (multer reporta mimes inconsistentes para shapefile zip). El servicio borra el archivo previo al reemplazar y al hacer DELETE de la layer.
 
@@ -510,6 +524,14 @@ POST   /:observatory/admin/usuarios           # Create admin user
 PATCH  /:observatory/admin/usuarios/:id       # Update admin user
 DELETE /:observatory/admin/usuarios/:id       # Delete admin user
 
+# Tracking + analytics
+POST /:observatory/events                                  # Public ingest (rate-limit 60/min/IP, lote ≤50)
+GET  /:observatory/admin/analytics/summary?days=N          # Admin: totals/byType/series/topPaths/topTargets
+
+# Arrecifes — climatology refresh (admin)
+POST /arrecifes/admin/reefs/refresh-climate                # Batch NASA POWER (12 reefs, 350ms entre requests)
+POST /arrecifes/admin/reefs/:id/refresh-climate            # Un solo reef
+
 # Public read endpoints (no auth)
 GET /:observatory/green-roofs                 # List green roofs
 GET /:observatory/green-roofs/:id             # Get green roof
@@ -555,6 +577,33 @@ Analyzes roof images (base64-encoded) to evaluate green roof installation aptitu
 - `confianza` / `porcentajeConfianza` — model confidence
 
 Requires `GEMINI_API_KEY` env var.
+
+### Observatory Events Module (tracking + analytics)
+**Directory:** `src/modules/observatory/events/`
+**Mounted at:** `/api/v1` (paths internos arrancan en `/observatory/:observatory/...`)
+**Entity:** `InteractionEvent` (`observatory_interaction_events`) — id, observatory
+(`arrecifes` | `humedales` | `techos-verdes`), eventType (`pageview` | `click` |
+`submit` | `search` | `filter` | `download` | `external_link` | `custom`), path,
+target, sessionId (uuid v4 generado en frontend), userId (nullable), metadata (JSON),
+referrer, userAgent (truncado 250), ipHash (SHA-256 con salt local, primeros 32 chars),
+createdAt. Sin PII; sólo agregados.
+
+**Routes:**
+- `POST /observatory/:observatory/events` — pública, ingest. Body: `{ events: [{ type,
+  path?, target?, sessionId, metadata?, referrer? }, …] }`. Lote ≤50 eventos. Rate-limit
+  60/min/IP en prod (dev sin límite). Devuelve `{ saved: N }` con 202.
+- `GET /observatory/:observatory/admin/analytics/summary?days=N` — auth admin
+  (superadmin bypasea scope). N ∈ [1, 180]. Devuelve `{ totals: { events, sessions,
+  pageviews, clicks, submits, downloads }, byType, series: [{ date, events, sessions
+  }, …] (sin huecos), topPaths: [{ key, count }, …10], topTargets: […10] }`.
+
+**Multi-tenant:** los 3 frontends usan el mismo plugin/composable; cada uno postea con
+su propio observatorio. `EventsService.getSummary` filtra por `observatory` con raw
+SQL (TypeORM tiene rarezas con `DATETIME(6)` en agregaciones por día).
+
+**Frontend público** del tracking vive en cada repo: `composables/useTracking.ts` +
+`plugins/tracking.client.ts`. Convención: marcar CTAs/elementos clave con
+`data-track="<label>"` para que aparezcan en `topTargets`.
 
 ### Remote Sensing Module
 **Directory:** `src/modules/observatory/remote-sensing/`
