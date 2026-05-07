@@ -512,7 +512,7 @@ DELETE /:observatory/admin/notihumedal/:id    # Delete article
 GET  /:observatory/admin/notihumedal/prospectos           # List scraped news (filterable by status)
 POST /:observatory/admin/notihumedal/prospectos/:id/aprobar   # Approve scraped news
 POST /:observatory/admin/notihumedal/prospectos/:id/rechazar  # Reject scraped news
-POST /:observatory/admin/notihumedal/scraper/run              # Trigger scraper (placeholder)
+POST /:observatory/admin/notihumedal/scraper/run              # Trigger scraper Mongabay México
 
 # CMS Sections (admin)
 GET  /:observatory/admin/cms/:pageSlug                    # Get all sections for page
@@ -577,6 +577,36 @@ Analyzes roof images (base64-encoded) to evaluate green roof installation aptitu
 - `confianza` / `porcentajeConfianza` — model confidence
 
 Requires `GEMINI_API_KEY` env var.
+
+### Notihumedal Scraper (Mongabay México)
+**Directory:** `src/modules/observatory/admin/notihumedal-scraper.service.ts`
+**Source:** `https://es.mongabay.com/list/mexico/` — listado público del feed
+mexicano de Mongabay Latam. Sin auth, sin rate-limit explícito, dominio público
+con atribución obligatoria.
+
+Pipeline:
+1. `scrapeMongabayMexico()` — fetch con timeout 20 s + User-Agent identificable
+   (`ObservatorioHumedalesBot/1.0`). Parseo por regex sobre los bloques
+   `<div class="article--container">` (sin dependencia HTML — la estructura es
+   estable). Extrae url, título, autor (`<span class="byline">`), fecha
+   (`<span class="date">` con abreviaturas en español: "Abr", "May", "Ago", "Dic")
+   e imagen (`<img src>`).
+2. Filtro de relevancia por keywords (humedal, manglar, laguna, río, agua,
+   tortuga, ramsar, sargazo, etc.) sobre título y URL — reduce ruido sin descartar
+   silenciosamente: si nada matchea (raro), conserva el set completo para que
+   el admin tenga algo que revisar.
+3. **Deduplicación** vía `urlHash = sha256(URL normalizada)` con índice UNIQUE en
+   la tabla. Re-correr el scraper no inserta duplicados.
+4. Inserta en `obs_prospecto_noticias` con `estado='pendiente'` y
+   `fuente='Mongabay Latam'`.
+5. El admin aprueba en `/admin/notihumedal` (tab "prospectos") — la UI pre-rellena
+   el form de Notihumedal con la atribución incrustada en el cuerpo
+   (`<p><strong>Fuente:</strong> <a href="...">Mongabay Latam</a></p>`).
+
+Trigger: manual desde el botón **"Ejecutar Scraper"** del admin
+(`POST /admin/notihumedal/scraper/run`). No hay cron job automático todavía —
+se dejó como manual para que el admin pueda revisar las novedades cuando tenga
+capacidad de validar.
 
 ### Observatory Events Module (tracking + analytics)
 **Directory:** `src/modules/observatory/events/`

@@ -5,6 +5,7 @@ import { seedAdmin } from './admin.seed';
 import { seedTestData } from './testdata.seed';
 import { seedGamification } from './gamification.seed';
 import { seedObservatoryAdmin } from './observatory-admin.seed';
+import { seedObservatoryAdditionalAdmins } from './observatory-additional-admins.seed';
 import { seedObservatoryContent } from './observatory-content.seed';
 import { seedArrecifes } from './arrecifes.seed';
 import { seedArrecifesObservations } from './arrecifes-observations.seed';
@@ -22,6 +23,7 @@ async function runSeeds() {
     await seedGamification();
     await seedConfigKV();
     await seedObservatoryAdmin();
+    await seedObservatoryAdditionalAdmins();
     await seedObservatoryContent();
     await seedArrecifes();
     await seedArrecifesObservations();

@@ -14,6 +14,7 @@ import { ObsCmsSection } from "../../../entities/observatory/CmsSection";
 import { ObservatoryAdmin } from "../../../entities/observatory/ObservatoryAdmin";
 import { AppError } from "../../../middleware/errorHandler.middleware";
 import * as crypto from "crypto";
+import { ingestMongabayProspectos } from "./notihumedal-scraper.service";
 
 const prospectRepo = () => AppDataSource.getRepository(ProspectSubmission);
 const greenRoofRepo = () => AppDataSource.getRepository(ObsGreenRoof);
@@ -512,8 +513,17 @@ export class ObservatoryAdminService {
   }
 
   async runScraper() {
-    // Placeholder: returns empty result. Real scraping runs via cron job.
-    return { message: "Scraper ejecutado", nuevosProspectos: 0 };
+    // Scrapea https://es.mongabay.com/list/mexico/, filtra por keywords de
+    // humedales/aguas, deduplica por hash de URL e inserta los nuevos como
+    // prospectos `pendiente`. Idempotente: re-correr no duplica.
+    const result = await ingestMongabayProspectos();
+    return {
+      message: result.inserted > 0
+        ? `Scraper ejecutado: ${result.inserted} nuevo(s) prospecto(s).`
+        : 'Scraper ejecutado: sin novedades (todo ya estaba en la cola).',
+      source: 'mongabay-mexico',
+      ...result,
+    };
   }
 
   // ══════════════════════════════════════

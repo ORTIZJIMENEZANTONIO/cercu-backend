@@ -86,12 +86,15 @@ export class EventsService {
     // Raw query para evitar cualquier raresa de TypeORM con DATETIME(6) en MySQL.
     const fromStr = from.toISOString().slice(0, 19).replace('T', ' ');
     const toStr = to.toISOString().slice(0, 19).replace('T', ' ');
+    // Excluye tráfico interno del panel admin (legacy, ya filtrado en cliente
+    // pero sirve para limpiar datos viejos sin tener que purgar la tabla).
     const events: Array<{ eventType: string; path: string | null; target: string | null; sessionId: string; createdAt: Date | string }> = await repo().query(
       `SELECT eventType, path, target, sessionId, createdAt
          FROM observatory_interaction_events
         WHERE observatory = ?
           AND createdAt >= ?
           AND createdAt <= ?
+          AND (path IS NULL OR path NOT LIKE '/admin%')
         ORDER BY createdAt ASC`,
       [observatory, fromStr, toStr],
     );
