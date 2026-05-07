@@ -33,9 +33,16 @@ export async function observatoryAuthMiddleware(
       throw new AppError('Account is deactivated', 403);
     }
 
-    // Check observatory scope if present in route params
+    const adminRole = (admin.role as 'superadmin' | 'admin' | 'editor') || 'admin';
+
+    // Superadmin bypasses per-observatory scoping (can edit data across all observatories).
+    // Other roles must have the observatory in their observatories[] array.
     const observatory = req.params.observatory;
-    if (observatory && !admin.observatories.includes(observatory)) {
+    if (
+      observatory &&
+      adminRole !== 'superadmin' &&
+      !admin.observatories.includes(observatory)
+    ) {
       throw new AppError('No access to this observatory', 403);
     }
 
@@ -43,6 +50,8 @@ export async function observatoryAuthMiddleware(
       id: admin.id,
       email: admin.email,
       role: 'observatory_admin',
+      adminRole,
+      adminObservatories: admin.observatories,
     };
 
     next();

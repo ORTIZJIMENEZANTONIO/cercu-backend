@@ -321,22 +321,33 @@ export class ObservatoryAdminController {
 
   // ──────────── Admin Users ────────────
   async listAdminUsers(req: Request, res: Response) {
-    const result = await service.listAdminUsers(req.params.observatory);
+    const result = await service.listAdminUsers(
+      req.params.observatory,
+      req.user!.adminRole === 'superadmin'
+    );
     res.json({ success: true, ...result });
   }
 
   async createAdminUser(req: Request, res: Response) {
-    const result = await service.createAdminUser(req.body, req.params.observatory);
+    const result = await service.createAdminUser(
+      req.body,
+      req.params.observatory,
+      req.user!.adminRole === 'superadmin'
+    );
     res.status(201).json({ success: true, data: result });
   }
 
   async updateAdminUser(req: Request, res: Response) {
-    const result = await service.updateAdminUser(req.params.id, req.body);
+    const result = await service.updateAdminUser(
+      req.params.id,
+      req.body,
+      req.user!.adminRole === 'superadmin'
+    );
     res.json({ success: true, data: result });
   }
 
   async deleteAdminUser(req: Request, res: Response) {
-    const result = await service.deleteAdminUser(req.params.id);
+    const result = await service.deleteAdminUser(req.params.id, req.user!.id);
     res.json({ success: true, data: result });
   }
 }

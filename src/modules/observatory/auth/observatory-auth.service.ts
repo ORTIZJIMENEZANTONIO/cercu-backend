@@ -22,6 +22,9 @@ export class ObservatoryAuthService {
       throw new AppError("Credenciales invalidas", 401);
     }
 
+    admin.lastLogin = new Date();
+    await repo().save(admin);
+
     const payload = {
       id: admin.id,
       email: admin.email,
@@ -38,6 +41,9 @@ export class ObservatoryAuthService {
         email: admin.email,
         name: admin.name,
         observatories: admin.observatories,
+        role: admin.role || "admin",
+        permissions: admin.permissions || [],
+        lastLogin: admin.lastLogin,
       },
     };
   }
@@ -52,6 +58,9 @@ export class ObservatoryAuthService {
       email: admin.email,
       name: admin.name,
       observatories: admin.observatories,
+      role: admin.role || "admin",
+      permissions: admin.permissions || [],
+      lastLogin: admin.lastLogin,
     };
   }
 }

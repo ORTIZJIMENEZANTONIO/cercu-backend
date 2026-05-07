@@ -38,6 +38,8 @@ router.get('/arrecifes/admin/reefs/:id', scope, auth, asyncHandler(c.getReef));
 router.post('/arrecifes/admin/reefs', scope, auth, validate(reefSchema), asyncHandler(c.createReef));
 router.patch('/arrecifes/admin/reefs/:id', scope, auth, asyncHandler(c.updateReef));
 router.delete('/arrecifes/admin/reefs/:id', scope, auth, asyncHandler(c.deleteReef));
+router.post('/arrecifes/admin/reefs/refresh-climate', scope, auth, asyncHandler(c.refreshAllReefClimate));
+router.post('/arrecifes/admin/reefs/:id/refresh-climate', scope, auth, asyncHandler(c.refreshReefClimate));
 
 // Public read (visible + not archived)
 router.get('/arrecifes/reefs', asyncHandler(c.listReefsPublic));

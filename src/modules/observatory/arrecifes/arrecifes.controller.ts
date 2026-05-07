@@ -66,6 +66,16 @@ export class ArrecifesController {
     res.json({ success: true, data: result });
   }
 
+  async refreshReefClimate(req: Request, res: Response) {
+    const result = await service.refreshReefClimate(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  async refreshAllReefClimate(_req: Request, res: Response) {
+    const result = await service.refreshAllReefClimate();
+    res.json({ success: true, data: result });
+  }
+
   // ─── Conflicts ───
   async listConflicts(req: Request, res: Response) {
     const { page, limit, search, state, intensity, status, visible, archived } = req.query;

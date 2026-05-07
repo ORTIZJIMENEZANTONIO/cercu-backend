@@ -554,21 +554,23 @@ export class ObservatoryAdminService {
   //  Admin Users
   // ══════════════════════════════════════
 
-  async listAdminUsers(observatory: string) {
+  async listAdminUsers(observatory: string, isSuperadmin = false) {
     const admins = await adminUserRepo().find({ order: { createdAt: "DESC" } });
-    // Filter by observatory access
+    const filtered = isSuperadmin
+      ? admins
+      : admins.filter((a) => a.observatories.includes(observatory));
     return {
-      items: admins
-        .filter((a) => a.observatories.includes(observatory))
-        .map((a) => ({
-          id: a.id,
-          email: a.email,
-          name: a.name,
-          role: (a as any).role || "admin",
-          permissions: (a as any).permissions || [],
-          createdAt: a.createdAt,
-          lastLogin: (a as any).lastLogin || null,
-        })),
+      items: filtered.map((a) => ({
+        id: a.id,
+        email: a.email,
+        name: a.name,
+        role: (a as any).role || "admin",
+        permissions: (a as any).permissions || [],
+        observatories: a.observatories || [],
+        isActive: a.isActive,
+        createdAt: a.createdAt,
+        lastLogin: (a as any).lastLogin || null,
+      })),
     };
   }
 
@@ -579,19 +581,38 @@ export class ObservatoryAdminService {
       password: string;
       role?: string;
       permissions?: string[];
+      observatories?: string[];
+      isActive?: boolean;
     },
-    observatory: string
+    observatory: string,
+    isSuperadmin = false
   ) {
     const bcrypt = require("bcryptjs");
     const existing = await adminUserRepo().findOne({
       where: { email: data.email },
     });
     if (existing) throw new AppError("Ya existe un usuario con ese email", 400);
+
+    const role = data.role && ["superadmin", "admin", "editor"].includes(data.role)
+      ? data.role
+      : "admin";
+    if (role === "superadmin" && !isSuperadmin) {
+      throw new AppError("Sólo un superadmin puede crear otro superadmin", 403);
+    }
+
+    const observatories =
+      isSuperadmin && Array.isArray(data.observatories) && data.observatories.length > 0
+        ? data.observatories
+        : [observatory];
+
     const admin = adminUserRepo().create({
       email: data.email,
       name: data.name,
       passwordHash: await bcrypt.hash(data.password, 12),
-      observatories: [observatory],
+      observatories,
+      role,
+      permissions: Array.isArray(data.permissions) ? data.permissions : [],
+      isActive: data.isActive ?? true,
     });
     return adminUserRepo().save(admin);
   }
@@ -604,22 +625,73 @@ export class ObservatoryAdminService {
       password: string;
       role: string;
       permissions: string[];
-    }>
+      observatories: string[];
+      isActive: boolean;
+    }>,
+    isSuperadmin = false
   ) {
     const admin = await adminUserRepo().findOne({ where: { id } });
     if (!admin) throw new AppError("Usuario no encontrado", 404);
-    if (data.name) admin.name = data.name;
-    if (data.email) admin.email = data.email;
+
+    if (data.name !== undefined) admin.name = data.name;
+    if (data.email !== undefined) admin.email = data.email;
     if (data.password) {
       const bcrypt = require("bcryptjs");
       admin.passwordHash = await bcrypt.hash(data.password, 12);
     }
+    if (data.role !== undefined) {
+      if (!["superadmin", "admin", "editor"].includes(data.role)) {
+        throw new AppError("Rol inválido", 400);
+      }
+      const promotingToSuper = data.role === "superadmin" && admin.role !== "superadmin";
+      const demotingFromSuper = admin.role === "superadmin" && data.role !== "superadmin";
+      if ((promotingToSuper || demotingFromSuper) && !isSuperadmin) {
+        throw new AppError("Sólo un superadmin puede cambiar el rol superadmin", 403);
+      }
+      if (demotingFromSuper) {
+        const supers = await adminUserRepo().count({ where: { role: "superadmin" } });
+        if (supers <= 1) {
+          throw new AppError("No se puede degradar al último superadmin", 400);
+        }
+      }
+      admin.role = data.role;
+    }
+    if (data.permissions !== undefined) admin.permissions = data.permissions;
+    if (data.observatories !== undefined) {
+      if (!isSuperadmin) {
+        throw new AppError(
+          "Sólo un superadmin puede modificar los observatorios asignados",
+          403
+        );
+      }
+      admin.observatories = data.observatories;
+    }
+    if (data.isActive !== undefined) {
+      if (admin.role === "superadmin" && !data.isActive) {
+        const activeSupers = await adminUserRepo().count({
+          where: { role: "superadmin", isActive: true },
+        });
+        if (activeSupers <= 1) {
+          throw new AppError("No se puede desactivar al último superadmin activo", 400);
+        }
+      }
+      admin.isActive = data.isActive;
+    }
     return adminUserRepo().save(admin);
   }
 
-  async deleteAdminUser(id: string) {
+  async deleteAdminUser(id: string, currentUserId: string) {
     const admin = await adminUserRepo().findOne({ where: { id } });
     if (!admin) throw new AppError("Usuario no encontrado", 404);
+    if (admin.id === currentUserId) {
+      throw new AppError("No puedes eliminar tu propia cuenta", 400);
+    }
+    if (admin.role === "superadmin") {
+      const supers = await adminUserRepo().count({ where: { role: "superadmin" } });
+      if (supers <= 1) {
+        throw new AppError("No se puede eliminar al último superadmin", 400);
+      }
+    }
     await adminUserRepo().remove(admin);
     return { deleted: true };
   }

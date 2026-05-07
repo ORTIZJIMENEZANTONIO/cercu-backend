@@ -9,6 +9,7 @@ import { ObsBleachingAlert } from '../../../entities/observatory/BleachingAlert'
 import { ObsLayer } from '../../../entities/observatory/Layer';
 import { ObsTier } from '../../../entities/observatory/Tier';
 import { AppError } from '../../../middleware/errorHandler.middleware';
+import { fetchReefClimate } from './nasaPower.service';
 
 const reefRepo = () => AppDataSource.getRepository(ObsReef);
 const conflictRepo = () => AppDataSource.getRepository(ObsConflict);
@@ -139,6 +140,45 @@ export class ArrecifesService {
     const r = await this.getReef(id);
     await reefRepo().remove(r);
     return { deleted: true };
+  }
+
+  // ─────────────── NASA POWER (climatología) ───────────────
+  // Refresca la climatología de un arrecife. Idempotente: re-llamarlo simplemente
+  // sobreescribe `climateData` con los valores más recientes de NASA POWER.
+  async refreshReefClimate(id: number) {
+    const r = await this.getReef(id);
+    const lat = Number(r.lat);
+    const lng = Number(r.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new AppError('Arrecife sin coordenadas válidas', 400);
+    }
+    const data = await fetchReefClimate(lat, lng);
+    r.climateData = data;
+    r.climateFetchedAt = new Date();
+    await reefRepo().save(r);
+    return { id: r.id, climateData: r.climateData, climateFetchedAt: r.climateFetchedAt };
+  }
+
+  // Refresca todos los arrecifes secuencialmente con pequeño delay para no
+  // saturar la API de NASA POWER (rate-limit blando ~10 req/s, vamos por debajo).
+  async refreshAllReefClimate() {
+    const reefs = await reefRepo().find({ select: ['id', 'name', 'lat', 'lng'] });
+    const results: { id: number; name: string; ok: boolean; error?: string }[] = [];
+    for (const r of reefs) {
+      try {
+        await this.refreshReefClimate(r.id);
+        results.push({ id: r.id, name: r.name, ok: true });
+      } catch (e: any) {
+        results.push({ id: r.id, name: r.name, ok: false, error: e?.message || 'unknown' });
+      }
+      await new Promise((res) => setTimeout(res, 350));
+    }
+    return {
+      total: reefs.length,
+      ok: results.filter((x) => x.ok).length,
+      failed: results.filter((x) => !x.ok).length,
+      results,
+    };
   }
 
   // ──────────────────────────── Conflicts ────────────────────────────

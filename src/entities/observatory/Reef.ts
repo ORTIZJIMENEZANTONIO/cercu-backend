@@ -7,6 +7,26 @@ import {
   Index,
 } from 'typeorm';
 
+// Subset de variables climatológicas anuales (medias) que pedimos a NASA POWER.
+// Cubre las que tienen relevancia ecológica para arrecifes.
+export interface ReefClimateData {
+  source: 'nasa_power';
+  lat: number;
+  lng: number;
+  // Promedios anuales
+  solarIrradiation: number | null;   // ALLSKY_SFC_SW_DWN — kWh/m²/día
+  airTemp: number | null;            // T2M — °C
+  precipitation: number | null;      // PRECTOTCORR — mm/día
+  windSpeed: number | null;          // WS10M — m/s
+  relativeHumidity: number | null;   // RH2M — %
+  // Promedios mensuales (12 valores: ene → dic)
+  monthly: {
+    solarIrradiation: number[];
+    airTemp: number[];
+    precipitation: number[];
+  } | null;
+}
+
 @Entity('obs_reefs')
 export class ObsReef {
   @PrimaryGeneratedColumn()
@@ -82,6 +102,15 @@ export class ObsReef {
 
   @Column({ type: 'boolean', default: false })
   archived!: boolean;
+
+  // Climatología NASA POWER (https://power.larc.nasa.gov). Cacheada por arrecife;
+  // la climatología cambia poco así que se refresca rara vez. `null` hasta que
+  // se ejecuta el endpoint de refresh.
+  @Column({ type: 'json', nullable: true })
+  climateData!: ReefClimateData | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  climateFetchedAt!: Date | null;
 
   @CreateDateColumn()
   createdAt!: Date;

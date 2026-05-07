@@ -6,6 +6,8 @@ declare global {
         phone?: string;
         email?: string;
         role: string;
+        adminRole?: 'superadmin' | 'admin' | 'editor';
+        adminObservatories?: string[];
       };
     }
   }

@@ -25,6 +25,7 @@ import observatoryDetectorRoutes from './modules/observatory/detector/detector.r
 import observatoryAIRoutes from './modules/observatory/ai/ai.routes';
 import observatoryRemoteSensingRoutes from './modules/observatory/remote-sensing/remote-sensing.routes';
 import arrecifesRoutes from './modules/observatory/arrecifes/arrecifes.routes';
+import observatoryEventsRoutes from './modules/observatory/events/events.routes';
 
 export function createApp() {
   const app = express();
@@ -61,6 +62,7 @@ export function createApp() {
   app.use('/api/v1/observatory', observatoryAIRoutes);
   app.use('/api/v1/observatory', observatoryRemoteSensingRoutes);
   app.use('/api/v1/observatory', arrecifesRoutes);
+  app.use('/api/v1', observatoryEventsRoutes);
 
   app.use(errorHandler);
 

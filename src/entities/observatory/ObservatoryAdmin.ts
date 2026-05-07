@@ -32,6 +32,9 @@ export class ObservatoryAdmin {
   @Column({ default: true })
   isActive!: boolean;
 
+  @Column({ type: 'datetime', nullable: true })
+  lastLogin!: Date | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 
