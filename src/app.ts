@@ -27,6 +27,7 @@ import observatoryRemoteSensingRoutes from './modules/observatory/remote-sensing
 import arrecifesRoutes from './modules/observatory/arrecifes/arrecifes.routes';
 import humedalesAttributionRoutes from './modules/observatory/humedales/humedales-attribution.routes';
 import techosVerdesAttributionRoutes from './modules/observatory/techos-verdes/techos-verdes-attribution.routes';
+import comunidadRoutes from './modules/observatory/comunidad/comunidad.routes';
 import observatoryEventsRoutes from './modules/observatory/events/events.routes';
 
 export function createApp() {
@@ -79,6 +80,10 @@ export function createApp() {
   // Mismo patron para techos-verdes: rutas especificas con assertTechosVerdes()
   // interno, montadas antes del catch-all generico de observatoryAdminRoutes.
   app.use('/api/v1/observatory', techosVerdesAttributionRoutes);
+  // Aportes publicos de comunidad: ruta especifica /:observatory/comunidad/aportes
+  // sin auth. Crea ProspectSubmission con source='comunidad'. Compartido entre
+  // observatorios (techos-verdes, humedales, arrecifes).
+  app.use('/api/v1/observatory', comunidadRoutes);
   app.use('/api/v1/observatory', observatoryAdminRoutes);
   app.use('/api/v1/observatory', observatoryDetectorRoutes);
   app.use('/api/v1/observatory', observatoryAIRoutes);

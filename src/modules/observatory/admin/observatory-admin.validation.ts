@@ -3,8 +3,34 @@ import Joi from 'joi';
 // ---------- Prospectos ----------
 export const submitProspectSchema = Joi.object({
   data: Joi.object().required(),
-  source: Joi.string().valid('ia_detector', 'manual', 'externo').default('manual'),
+  source: Joi.string().valid('ia_detector', 'manual', 'externo', 'comunidad').default('manual'),
   confianzaDetector: Joi.string().allow(null, '').optional(),
+});
+
+// ---------- Techos Verdes: Comunidad / Aportes publicos ----------
+// Endpoint publico que recibe aportes desde /comunidad. Internamente crea un
+// ProspectSubmission con source='comunidad'. La revision es manual desde
+// /admin/prospectos.
+export const comunidadAporteSchema = Joi.object({
+  nombre: Joi.string().trim().min(2).max(150).required(),
+  email: Joi.string().email().required(),
+  alcaldia: Joi.string().trim().max(120).allow('').optional(),
+  modo: Joi.string()
+    .valid('aprendiz', 'reportador', 'caracterizador', 'especialista', 'operador', '')
+    .allow('')
+    .optional(),
+  rol: Joi.string()
+    .valid('ciudadano', 'propietario', 'arquitecto', 'ingeniero', 'empresa', 'gobierno', 'ong', 'academia', '')
+    .allow('')
+    .optional(),
+  mensaje: Joi.string().trim().min(10).max(4000).required(),
+  // Geolocalizacion opcional (cuando el aporte refiere a una azotea concreta)
+  lat: Joi.number().min(-90).max(90).optional(),
+  lng: Joi.number().min(-180).max(180).optional(),
+  direccion: Joi.string().allow('').max(255).optional(),
+  imagen: Joi.string().uri().allow(null, '').optional(),
+  // Anti-spam: campo honeypot que humanos dejan vacio
+  website: Joi.string().allow('').optional(),
 });
 
 export const rejectProspectSchema = Joi.object({

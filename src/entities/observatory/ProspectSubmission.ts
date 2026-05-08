@@ -15,6 +15,7 @@ export enum ProspectSource {
   IA_DETECTOR = 'ia_detector',
   MANUAL = 'manual',
   EXTERNO = 'externo',
+  COMUNIDAD = 'comunidad',
 }
 
 @Entity('obs_prospect_submissions')

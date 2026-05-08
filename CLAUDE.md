@@ -100,6 +100,9 @@ cercu-backend/
 │   │       ├── arrecifes/    # CRUD reefs/conflicts/contributors/observations/layers/tiers +
 │   │       │                 # NASA POWER climatology integration (nasaPower.service.ts)
 │   │       ├── events/       # Tracking ingest + analytics summary (anónimo, multi-observatory)
+│   │       ├── comunidad/    # Public POST /:observatory/comunidad/aportes — community contributions
+│   │       │                 # from /comunidad page (techos-verdes, humedales, arrecifes). Wraps
+│   │       │                 # ProspectSubmission with source='comunidad'. Honeypot anti-spam.
 │   │       └── remote-sensing/  # Vegetation/water indices (GEE + Sentinel Hub + fallback)
 │   ├── jobs/                 # 4 cron jobs
 │   ├── seeds/                # Database seeding: categories, admin, test data, gamification, observatory-admin,
@@ -478,6 +481,8 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `1738000000000-CreateHumedalTiersAndContributors.ts` — crea `obs_humedales_tiers` y `obs_humedales_contributors` (tablas separadas de `obs_tiers`/`obs_contributors` para evitar colisión de slugs/handles con arrecifes) + agrega `contributorId INT NULL` a `obs_prospect_submissions` con índice. Idempotente vía `SHOW TABLES` y `SHOW COLUMNS`. Habilita el sistema de atribución a prospectos del Observatorio de Humedales.
 - `1739000000000-CreateTechosVerdesTiersAndContributors.ts` — crea `obs_techos_verdes_tiers` y `obs_techos_verdes_contributors` con la misma estructura que las humedales-tablas, pero vocabulario propio (slugs `aprendiz/reportador/caracterizador/especialista/operador`, roles `arquitecto/ingeniero/empresa/...`). NO modifica `obs_prospect_submissions.contributorId` (ya existe desde 1738) — la columna se reusa: cuando `observatory='techos-verdes'`, el id apunta a `obs_techos_verdes_contributors.id`. Idempotente.
 - `1740000000000-SeedExpandedCmsSections.ts` — siembra ~25 secciones del CMS expandido para humedales (incluye el `home.hero` que reportó el usuario como NO editable) más 2 secciones nuevas para techos-verdes (`contributors.hero`, `contributors.intro`). **Patrón idempotente con `upsertSection()`**: para cada `(observatory, pageSlug, sectionKey)` verifica si ya existe — si existe, NO sobrescribe (preserva contenido editado por humanos en producción); si no existe, inserta los defaults. Marca `updatedBy='migration:1740'` para que el `down()` pueda revertir solo lo que esta migración creó. Cubre el gap entre el seed (que solo corre con `count===0`) y BBDDs en producción que ya tienen algunas secciones humedales pero les falta el resto.
+- `1741000000000-SeedTechosVerdesNewPagesCms.ts` — siembra el CMS de las 3 páginas nuevas de techos-verdes: `agenda-2030` (hero + intro), `referencias` (hero), `comunidad` (hero + intro). Mismo patrón idempotente que 1740 (`upsertSection`). Marca `updatedBy='migration:1741'`. Espejo de los defaults de `data/cms-defaults.ts` del frontend.
+- `1742000000000-AddSourceIndexToProspects.ts` — añade índice compuesto `IDX_prospect_obs_source` sobre `obs_prospect_submissions(observatory, source)` para acelerar los listados filtrados por `source='comunidad'` desde `/admin/prospectos`. Idempotente vía `SHOW INDEX`. Si la tabla 1734 todavía no existe (orden raro de migraciones), skip + log.
 
 **Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
 - `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`) + **13 layers** iniciales (NOAA CRW, NASA MODIS/PACE, ESA Sentinel-2, GEBCO, CONABIO ANP+coral, CONANP, GFW, NOAA SaWS, INEGI). Las layers son `kind=external_url`; el admin puede subir `kind=uploaded_file` después.
@@ -485,6 +490,7 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
 - `observatory-content.seed.ts` — secciones CMS multi-tenant. Solo corre cuando `count===0` por observatorio (BBDDs vírgenes); para BBDDs existentes usar la migración 1740. **Humedales (CMS expandido, ~25 secciones)**: home (hero, features, steps, tipologias, servicios), sobre (objetivos, criterios, normativas), analisis (sections), inventario (hero, helpText), mapa (hero, legend), notihumedal (hero, emptyState), registra (hero, steps, confirmation), analisis-indicadores (hero, tabs), analisis-brecha (hero, methodology), analisis-hallazgos (hero, callToAction), contributors (hero, intro), footer (brand, sources, quickLinks, legal) + 5 ObsHumedalTier (`aprendiz`, `observador`, `caracterizador`, `especialista`, `custodio`) + 3 ObsHumedalContributor seed (Equipo CIIEMAD-IPN, Diego Domínguez Solís, GAIA-FQ-UNAM). **Techos Verdes**: home/sobre/metodologia/etc. con 18 secciones + 5 ObsTechosVerdesTier (`aprendiz`, `reportador`, `caracterizador`, `especialista`, `operador`) + 2 ObsTechosVerdesContributor seed (CIIEMAD-IPN, Equipo SEDEMA). **Arrecifes**: 30 secciones cubriendo home (hero/features/sectionTitle/alerts/contributorsTeaser/cta), about (hero/mission/inspirations/sources/reputationIntro/validation/licenses/contact), contribute (hero/sidebar/notice), contributors (hero/modesIntro/networkCallout/cta), heros sueltos (inventory/atlas/data-sources/noticias/observations) y footer (brand/attribution/sources/quickLinks/institutional). Idempotente con count por observatory/tabla.
 - `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`, `manage_cms`)
+- `comunidad-aportes-demo.seed.ts` — 4 ProspectSubmissions demo con `source='comunidad'` y `status='pendiente'` para llenar la cola de `/admin/prospectos` en desarrollo. Cubre los 4 modos representativos de la red de contribuyentes (aprendiz/ciudadano, caracterizador/arquitecto, especialista/academia, operador/empresa). Idempotente: solo inserta cuando ya no hay aportes con `source='comunidad'` para techos-verdes (no toca aportes reales que llegaran vía `POST /:observatory/comunidad/aportes`).
 
 ### Observatory API Routes
 Base: `/api/v1/observatory`
@@ -514,7 +520,13 @@ POST /:observatory/admin/prospectos/:id/aprobar   # Approve prospect
 POST /:observatory/admin/prospectos/:id/rechazar  # Reject prospect (requires notas)
 
 # Prospect submission (public — for detector integration)
-POST /:observatory/prospectos                 # Submit new prospect
+POST /:observatory/prospectos                 # Submit new prospect (source: ia_detector | manual | externo | comunidad)
+
+# Comunidad — Public community contributions (no auth)
+POST /:observatory/comunidad/aportes          # Receives /comunidad form submissions; creates ProspectSubmission with source='comunidad' and status='pendiente'.
+                                              # Validated by `comunidadAporteSchema` (Joi). Honeypot field `website` filters bots silently.
+                                              # Module: src/modules/observatory/comunidad/{routes,controller,service}.ts
+                                              # Reviewed manually from /admin/prospectos like any other prospect.
 
 # Content CRUD (admin, all follow GET/POST + GET/PATCH/DELETE pattern)
 # Techos Verdes:
