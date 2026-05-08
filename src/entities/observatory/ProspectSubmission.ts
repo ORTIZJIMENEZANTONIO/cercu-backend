@@ -46,6 +46,12 @@ export class ProspectSubmission {
   @Column({ type: 'datetime', nullable: true })
   reviewedAt!: Date | null;
 
+  // Atribucion: contribuyente al que se asocia el reporte (opcional).
+  // Para humedales referencia obs_humedales_contributors.id;
+  // para techos-verdes esta sin uso por ahora.
+  @Column({ type: 'int', nullable: true })
+  contributorId!: number | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

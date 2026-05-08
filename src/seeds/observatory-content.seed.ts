@@ -8,6 +8,8 @@ import { ObsNotihumedal } from '../entities/observatory/Notihumedal';
 import { ObsProspectoNoticia } from '../entities/observatory/ProspectoNoticia';
 import { ObsCmsSection } from '../entities/observatory/CmsSection';
 import { ProspectSubmission, ProspectStatus, ProspectSource } from '../entities/observatory/ProspectSubmission';
+import { ObsHumedalTier } from '../entities/observatory/HumedalTier';
+import { ObsHumedalContributor } from '../entities/observatory/HumedalContributor';
 import * as crypto from 'crypto';
 
 export async function seedObservatoryContent() {
@@ -682,6 +684,141 @@ export async function seedObservatoryContent() {
       },
     ]));
     console.log('  ProspectSubmission: 1 record created');
+  }
+
+  // ── Humedales Tiers (modos de participacion) ──
+  const humedalTierRepo = AppDataSource.getRepository(ObsHumedalTier);
+  if ((await humedalTierRepo.count()) === 0) {
+    await humedalTierRepo.save(humedalTierRepo.create([
+      {
+        slug: 'aprendiz',
+        label: 'Aprendiz',
+        description: 'Primera entrada al observatorio. Reporta un humedal observado, comparte una foto o aporta una pista de campo.',
+        minScore: 0, maxScore: 19,
+        color: 'slate', icon: 'lucide:seedling', sortOrder: 1,
+        modeTitle: 'Curiosidad ciudadana',
+        audience: 'Vecinas, vecinos y estudiantes que pasan por el sitio.',
+        contributions: [
+          'Reportar un humedal candidato via /registra',
+          'Compartir foto y ubicacion aproximada',
+          'Avisar de cambios visibles (sequia, basura, especies invasoras)',
+        ],
+        bridge: 'Cuando dos reportes son validados pasa a Observador.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'observador',
+        label: 'Observador',
+        description: 'Sigue uno o varios humedales en el tiempo. Sus aportes ya tienen referencia (fecha, lugar exacto) y han sido validados al menos dos veces.',
+        minScore: 20, maxScore: 99,
+        color: 'secondary', icon: 'lucide:eye', sortOrder: 2,
+        modeTitle: 'Observacion sostenida',
+        audience: 'Personas que viven cerca de un humedal o lo visitan periodicamente.',
+        contributions: [
+          'Series de fotos del mismo sitio cada 1-3 meses',
+          'Notas de fauna observada (aves, anfibios)',
+          'Reporte de obras o intervenciones cercanas',
+        ],
+        bridge: 'Si comparte datos cuantitativos (mediciones de campo) escala a Caracterizador.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'caracterizador',
+        label: 'Caracterizador',
+        description: 'Aporta datos tecnicos verificables: superficie, vegetacion identificada, mediciones simples (pH, conductividad), planos basicos.',
+        minScore: 100, maxScore: 299,
+        color: 'eco', icon: 'lucide:ruler', sortOrder: 3,
+        modeTitle: 'Caracterizacion tecnica',
+        audience: 'Estudiantes de licenciatura/maestria, tecnicos ambientales, ONGs locales.',
+        contributions: [
+          'Identificacion de vegetacion (Typha, Phragmites, Schoenoplectus, etc.)',
+          'Mediciones de superficie y volumen',
+          'Calidad de agua basica (turbidez, OD, pH)',
+        ],
+        bridge: 'Si publica datos en revista o tesis, pasa a Especialista.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'especialista',
+        label: 'Especialista',
+        description: 'Investigador con publicaciones, tesis o proyectos formales sobre humedales. Sus aportes son citables y suelen incluir fuentes academicas.',
+        minScore: 300, maxScore: 999,
+        color: 'primary', icon: 'lucide:microscope', sortOrder: 4,
+        modeTitle: 'Investigacion cientifica',
+        audience: 'Academia (UNAM, IPN, UAM, UAEMex, UAEMor, IMTA, etc.) y consultoras tecnicas.',
+        contributions: [
+          'Resultados de monitoreo formal (NOM-001, NOM-003)',
+          'Publicaciones revisadas por pares',
+          'Diseno o evaluacion de humedales',
+        ],
+        bridge: 'Cuando coordina equipos o sostiene un sitio en el tiempo, asume rol de Custodio.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'custodio',
+        label: 'Custodio',
+        description: 'Institucion u organizacion que opera y resguarda un humedal en el largo plazo. Asegura datos historicos, mantenimiento y formacion.',
+        minScore: 1000, maxScore: null,
+        color: 'accent', icon: 'lucide:shield-check', sortOrder: 5,
+        modeTitle: 'Custodia institucional',
+        audience: 'Universidades, dependencias gubernamentales (SEDEMA, SACMEX), ONGs grandes y operadores publicos.',
+        contributions: [
+          'Operacion y mantenimiento del humedal',
+          'Series temporales de calidad de agua',
+          'Formacion de cuadros y replicas en otros sitios',
+        ],
+        bridge: 'Es el extremo del modelo: integra los aportes de los otros modos en politica publica.',
+        visible: true, archived: false,
+      },
+    ]));
+    console.log('  ObsHumedalTier: 5 records created');
+  }
+
+  // ── Humedales Contributors (semilla minima para demostrar atribucion) ──
+  const humedalContribRepo = AppDataSource.getRepository(ObsHumedalContributor);
+  if ((await humedalContribRepo.count()) === 0) {
+    await humedalContribRepo.save(humedalContribRepo.create([
+      {
+        displayName: 'Equipo CIIEMAD-IPN',
+        handle: 'ciiemad-ipn',
+        role: 'institucion',
+        affiliation: 'CIIEMAD - Instituto Politecnico Nacional',
+        bio: 'Centro Interdisciplinario de Investigaciones y Estudios sobre Medio Ambiente y Desarrollo, IPN. Coordina el inventario Fase 1 y la investigacion sobre humedales artificiales en CDMX.',
+        alcaldia: 'Gustavo A. Madero',
+        joinedAt: '2024-01-15',
+        tier: 'custodio',
+        reputationScore: 1500, validatedContributions: 150, rejectedContributions: 0,
+        acceptanceRate: 1.0, averageQuality: 95, consecutiveMonthsActive: 24,
+        publicProfile: true, verified: true, visible: true, archived: false,
+      },
+      {
+        displayName: 'Diego Dominguez Solis',
+        handle: 'diego-dominguez',
+        role: 'investigador',
+        affiliation: 'CIIEMAD-IPN',
+        bio: 'M. en C. autor del Inventario Fase 1 de humedales artificiales en CDMX y de la revision sistematica Water (2025).',
+        alcaldia: 'Gustavo A. Madero',
+        joinedAt: '2024-06-01',
+        tier: 'especialista',
+        reputationScore: 850, validatedContributions: 85, rejectedContributions: 0,
+        acceptanceRate: 1.0, averageQuality: 95, consecutiveMonthsActive: 18,
+        publicProfile: true, verified: true, visible: true, archived: false,
+      },
+      {
+        displayName: 'GAIA - Facultad de Quimica UNAM',
+        handle: 'gaia-fq-unam',
+        role: 'institucion',
+        affiliation: 'Facultad de Quimica, UNAM',
+        bio: 'Grupo de Investigacion en Ingenieria Ambiental Aplicada. 30+ anios investigando humedales artificiales (STHA Aragon, SHATTO, multiples instalaciones UNAM).',
+        alcaldia: 'Coyoacan',
+        joinedAt: '2024-01-15',
+        tier: 'custodio',
+        reputationScore: 1700, validatedContributions: 170, rejectedContributions: 0,
+        acceptanceRate: 1.0, averageQuality: 96, consecutiveMonthsActive: 24,
+        publicProfile: true, verified: true, visible: true, archived: false,
+      },
+    ]));
+    console.log('  ObsHumedalContributor: 3 records created');
   }
 
   console.log('Observatory content seed complete');

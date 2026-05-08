@@ -25,6 +25,7 @@ import observatoryDetectorRoutes from './modules/observatory/detector/detector.r
 import observatoryAIRoutes from './modules/observatory/ai/ai.routes';
 import observatoryRemoteSensingRoutes from './modules/observatory/remote-sensing/remote-sensing.routes';
 import arrecifesRoutes from './modules/observatory/arrecifes/arrecifes.routes';
+import humedalesAttributionRoutes from './modules/observatory/humedales/humedales-attribution.routes';
 import observatoryEventsRoutes from './modules/observatory/events/events.routes';
 
 export function createApp() {
@@ -69,6 +70,11 @@ export function createApp() {
   // al handler genérico (humedales-style, `contenido: {}` + `prospectos`)
   // y no al arrecifes-específico (rico, con `content`/`totals`/`observations`).
   app.use('/api/v1/observatory', arrecifesRoutes);
+  // Rutas humedales-only para tiers/contributors/atribucion. Tambien usan
+  // path con `:observatory` pero hacen un assertHumedales() interno y
+  // tienen rutas mas especificas (/contributors, /tiers, /prospectos/:id/contributor)
+  // que no colisionan con el catch-all de observatoryAdminRoutes.
+  app.use('/api/v1/observatory', humedalesAttributionRoutes);
   app.use('/api/v1/observatory', observatoryAdminRoutes);
   app.use('/api/v1/observatory', observatoryDetectorRoutes);
   app.use('/api/v1/observatory', observatoryAIRoutes);
