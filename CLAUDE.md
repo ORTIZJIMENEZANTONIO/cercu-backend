@@ -418,7 +418,7 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 ### Entities (22)
 **Shared:**
 - `ObservatoryAdmin` (`observatory_admins`) — id (uuid), email, passwordHash, name, observatories (simple-array), isActive
-- `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt
+- `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt, **contributorId** (INT NULL — referencia a `obs_humedales_contributors.id` cuando observatory='humedales')
 - `ObsCmsSection` (`obs_cms_sections`) — CMS page sections, **multi-tenant**: observatory (default `'humedales'`), pageSlug, sectionKey, items (JSON array), updatedBy. Índice compuesto `(observatory, pageSlug, sectionKey)` para el lookup del servicio. Cada observatorio mantiene su propio set de secciones — sin colisiones por `pageSlug='home'`
 
 **Techos verdes:**
@@ -431,6 +431,12 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `ObsHallazgo` (`obs_hallazgos`) — findings & recommendations
 - `ObsNotihumedal` (`obs_notihumedal`) — wetland news articles: titulo, slug, resumen, contenido (longtext), css_content, editor_data (JSON), autor, fecha, tags (JSON), imagen
 - `ObsProspectoNoticia` (`obs_prospecto_noticias`) — scraped news prospects: titulo, resumen, url, fuente, fecha, estado (pendiente/aprobado/rechazado), notasRechazo, urlHash (SHA-256 for dedup), reviewedBy
+- `ObsHumedalTier` (`obs_humedales_tiers`) — escala reputacional / modos de participación humedales-only: slug (unique), label, description, minScore, maxScore, color, requirements, icon, sortOrder, visible, archived, modeTitle, audience, contributions (JSON), bridge. Tabla SEPARADA de `obs_tiers` (arrecifes) para evitar colisión de slugs.
+- `ObsHumedalContributor` (`obs_humedales_contributors`) — colaboradores humedales: displayName, handle (unique), role (`ciudadano|investigador|estudiante|institucion|gobierno|ong|tecnico_campo`), affiliation, bio, avatarUrl, alcaldia, joinedAt, tier (slug → `obs_humedales_tiers.slug`), reputationScore, validatedContributions, rejectedContributions, acceptanceRate, averageQuality, consecutiveMonthsActive, badges (JSON), publicProfile, verified, visible, archived. Tabla SEPARADA de `obs_contributors` (arrecifes).
+
+**Techos Verdes — Tiers + Contributors (mismo patrón que humedales):**
+- `ObsTechosVerdesTier` (`obs_techos_verdes_tiers`) — escala reputacional / modos de participación con vocabulario propio (slugs `aprendiz`, `reportador`, `caracterizador`, `especialista`, `operador`). Misma estructura que `ObsHumedalTier`. Tabla SEPARADA de `obs_tiers` y `obs_humedales_tiers`.
+- `ObsTechosVerdesContributor` (`obs_techos_verdes_contributors`) — colaboradores techos verdes: roles adaptados (`ciudadano|propietario|arquitecto|ingeniero|empresa|gobierno|ong|academia`), tier (slug → `obs_techos_verdes_tiers.slug`). Misma estructura que `ObsHumedalContributor`.
 
 **Arrecifes** (módulo `modules/observatory/arrecifes/`):
 - `ObsReef` (`obs_reefs`) — name, state, ocean, region, benthicClasses (JSON), geomorphicClasses (JSON), area, depthRange (JSON tuple), protection, status, liveCoralCover, bleachingAlert, speciesRichness, threats (JSON), observations counter, lat/lng, description, hero, **gallery (JSON max 3)**, imageCredit, visible, archived, **climateData (JSON ReefClimateData NASA POWER)**, **climateFetchedAt (datetime nullable)**
@@ -469,12 +475,15 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `1735000000000-AddModeFieldsToObsTiers.ts` — añade `modeTitle`, `audience`, `contributions` (JSON), `bridge` a `obs_tiers` para el reframe de "modos de participación" en `/contributors`.
 - `1736000000000-AddObservatoryToCmsSections.ts` — añade columna `observatory` a `obs_cms_sections` con default `'humedales'` (backfill para preservar las secciones existentes) + índice compuesto `(observatory, pageSlug, sectionKey)`. Permite que arrecifes tenga su propio set de secciones sin colisionar con humedales en `pageSlug='home'`. Idempotente vía `SHOW COLUMNS / SHOW INDEX`.
 - `1737000000000-AddCCHOrienteHumedal.ts` — inserta el humedal artificial del CCH Oriente UNAM (programa SECTEI–UNAM–GMI, fines de 2019) en `obs_humedales` con `visible=true`. Tipo HSSF inferido por el proceso descrito; vegetación documentada (papiro, carrizo, cola de caballo); sustrato gravas + biopelícula; capacidad y eficiencias específicas no publicadas (referencia del programa: ENCiT 600 L/d). Fuentes citadas en `fuente`: Gaceta UNAM 2023, DGCS-UNAM Boletín 1060/2022, UNAM Global, Fundación UNAM, PortalAmbiental.com.mx. Idempotente vía `SELECT … WHERE nombre LIKE '%CCH Oriente%'`.
+- `1738000000000-CreateHumedalTiersAndContributors.ts` — crea `obs_humedales_tiers` y `obs_humedales_contributors` (tablas separadas de `obs_tiers`/`obs_contributors` para evitar colisión de slugs/handles con arrecifes) + agrega `contributorId INT NULL` a `obs_prospect_submissions` con índice. Idempotente vía `SHOW TABLES` y `SHOW COLUMNS`. Habilita el sistema de atribución a prospectos del Observatorio de Humedales.
+- `1739000000000-CreateTechosVerdesTiersAndContributors.ts` — crea `obs_techos_verdes_tiers` y `obs_techos_verdes_contributors` con la misma estructura que las humedales-tablas, pero vocabulario propio (slugs `aprendiz/reportador/caracterizador/especialista/operador`, roles `arquitecto/ingeniero/empresa/...`). NO modifica `obs_prospect_submissions.contributorId` (ya existe desde 1738) — la columna se reusa: cuando `observatory='techos-verdes'`, el id apunta a `obs_techos_verdes_contributors.id`. Idempotente.
+- `1740000000000-SeedExpandedCmsSections.ts` — siembra ~25 secciones del CMS expandido para humedales (incluye el `home.hero` que reportó el usuario como NO editable) más 2 secciones nuevas para techos-verdes (`contributors.hero`, `contributors.intro`). **Patrón idempotente con `upsertSection()`**: para cada `(observatory, pageSlug, sectionKey)` verifica si ya existe — si existe, NO sobrescribe (preserva contenido editado por humanos en producción); si no existe, inserta los defaults. Marca `updatedBy='migration:1740'` para que el `down()` pueda revertir solo lo que esta migración creó. Cubre el gap entre el seed (que solo corre con `count===0`) y BBDDs en producción que ya tienen algunas secciones humedales pero les falta el resto.
 
 **Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
 - `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`) + **13 layers** iniciales (NOAA CRW, NASA MODIS/PACE, ESA Sentinel-2, GEBCO, CONABIO ANP+coral, CONANP, GFW, NOAA SaWS, INEGI). Las layers son `kind=external_url`; el admin puede subir `kind=uploaded_file` después.
 - `arrecifes-observations.seed.ts` — 6 observations cubriendo todo el workflow (1 pending, 1 in_review, 2 validated, 1 rejected, 1 needs_more_info) — demo de la cola de revisión
 - `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
-- `observatory-content.seed.ts` — secciones CMS multi-tenant. **Humedales**: home/features, home/tipologias, sobre/criterios. **Arrecifes**: 30 secciones cubriendo home (hero/features/sectionTitle/alerts/contributorsTeaser/cta), about (hero/mission/inspirations/sources/reputationIntro/validation/licenses/contact), contribute (hero/sidebar/notice), contributors (hero/modesIntro/networkCallout/cta), heros sueltos (inventory/atlas/data-sources/noticias/observations) y footer (brand/attribution/sources/quickLinks/institutional). Idempotente con count por observatory.
+- `observatory-content.seed.ts` — secciones CMS multi-tenant. Solo corre cuando `count===0` por observatorio (BBDDs vírgenes); para BBDDs existentes usar la migración 1740. **Humedales (CMS expandido, ~25 secciones)**: home (hero, features, steps, tipologias, servicios), sobre (objetivos, criterios, normativas), analisis (sections), inventario (hero, helpText), mapa (hero, legend), notihumedal (hero, emptyState), registra (hero, steps, confirmation), analisis-indicadores (hero, tabs), analisis-brecha (hero, methodology), analisis-hallazgos (hero, callToAction), contributors (hero, intro), footer (brand, sources, quickLinks, legal) + 5 ObsHumedalTier (`aprendiz`, `observador`, `caracterizador`, `especialista`, `custodio`) + 3 ObsHumedalContributor seed (Equipo CIIEMAD-IPN, Diego Domínguez Solís, GAIA-FQ-UNAM). **Techos Verdes**: home/sobre/metodologia/etc. con 18 secciones + 5 ObsTechosVerdesTier (`aprendiz`, `reportador`, `caracterizador`, `especialista`, `operador`) + 2 ObsTechosVerdesContributor seed (CIIEMAD-IPN, Equipo SEDEMA). **Arrecifes**: 30 secciones cubriendo home (hero/features/sectionTitle/alerts/contributorsTeaser/cta), about (hero/mission/inspirations/sources/reputationIntro/validation/licenses/contact), contribute (hero/sidebar/notice), contributors (hero/modesIntro/networkCallout/cta), heros sueltos (inventory/atlas/data-sources/noticias/observations) y footer (brand/attribution/sources/quickLinks/institutional). Idempotente con count por observatory/tabla.
 - `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`, `manage_cms`)
 
 ### Observatory API Routes
@@ -538,6 +547,58 @@ GET    /:observatory/admin/usuarios           # List admin users for observatory
 POST   /:observatory/admin/usuarios           # Create admin user
 PATCH  /:observatory/admin/usuarios/:id       # Update admin user
 DELETE /:observatory/admin/usuarios/:id       # Delete admin user
+
+# Humedales — Tiers + Contributors + Atribución (modules/observatory/humedales/)
+# Solo el observatory='humedales' es válido; el controller rechaza con 404 cualquier otro.
+# Tablas SEPARADAS de obs_tiers/obs_contributors (que pertenecen a arrecifes).
+
+# Tiers públicos
+GET  /humedales/tiers                         # Lista tiers visibles + no archivados
+GET  /humedales/tiers/:id                     # Detalle de un tier
+
+# Tiers admin
+GET  /humedales/admin/tiers                   # Lista todos (incluye archivados)
+GET  /humedales/admin/tiers/:id
+POST /humedales/admin/tiers                   # Crear tier (slug único)
+PATCH /humedales/admin/tiers/:id              # Editar tier
+DELETE /humedales/admin/tiers/:id             # Soft delete (archived=true, visible=false)
+
+# Contributors públicos
+GET  /humedales/contributors                  # Lista contributors visibles + verificados + publicProfile=true
+                                              # ?search&role&tier&verified&limit
+GET  /humedales/contributors/:id              # Detalle público
+
+# Contributors admin
+GET  /humedales/admin/contributors            # Lista todos (incluye privados/archivados)
+GET  /humedales/admin/contributors/:id
+POST /humedales/admin/contributors            # Crear contributor (handle único, joinedAt auto si no se pasa)
+PATCH /humedales/admin/contributors/:id       # Editar contributor
+DELETE /humedales/admin/contributors/:id      # Soft delete
+
+# Atribución a prospectos
+PATCH /humedales/admin/prospectos/:id/contributor   # Body: { contributorId: number | null }
+                                                    # Vincula/desvincula un contribuyente al prospecto
+
+# Techos Verdes — Tiers + Contributors + Atribución (modules/observatory/techos-verdes/)
+# Solo el observatory='techos-verdes' es válido; el controller rechaza con 404 cualquier otro.
+# Tablas SEPARADAS de obs_tiers/obs_contributors (arrecifes) y obs_humedales_* (humedales).
+
+# Tiers (públicos + admin) — misma forma que las rutas humedales
+GET    /techos-verdes/tiers                 GET    /techos-verdes/admin/tiers
+GET    /techos-verdes/tiers/:id             GET    /techos-verdes/admin/tiers/:id
+                                            POST   /techos-verdes/admin/tiers
+                                            PATCH  /techos-verdes/admin/tiers/:id
+                                            DELETE /techos-verdes/admin/tiers/:id
+
+# Contributors (públicos + admin)
+GET    /techos-verdes/contributors          GET    /techos-verdes/admin/contributors
+GET    /techos-verdes/contributors/:id      GET    /techos-verdes/admin/contributors/:id
+                                            POST   /techos-verdes/admin/contributors
+                                            PATCH  /techos-verdes/admin/contributors/:id
+                                            DELETE /techos-verdes/admin/contributors/:id
+
+# Atribución a prospectos
+PATCH /techos-verdes/admin/prospectos/:id/contributor   # Body: { contributorId: number | null }
 
 # Tracking + analytics
 POST /:observatory/events                                  # Public ingest (rate-limit 60/min/IP, lote ≤50)

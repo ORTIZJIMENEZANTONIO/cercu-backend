@@ -26,6 +26,7 @@ import observatoryAIRoutes from './modules/observatory/ai/ai.routes';
 import observatoryRemoteSensingRoutes from './modules/observatory/remote-sensing/remote-sensing.routes';
 import arrecifesRoutes from './modules/observatory/arrecifes/arrecifes.routes';
 import humedalesAttributionRoutes from './modules/observatory/humedales/humedales-attribution.routes';
+import techosVerdesAttributionRoutes from './modules/observatory/techos-verdes/techos-verdes-attribution.routes';
 import observatoryEventsRoutes from './modules/observatory/events/events.routes';
 
 export function createApp() {
@@ -75,6 +76,9 @@ export function createApp() {
   // tienen rutas mas especificas (/contributors, /tiers, /prospectos/:id/contributor)
   // que no colisionan con el catch-all de observatoryAdminRoutes.
   app.use('/api/v1/observatory', humedalesAttributionRoutes);
+  // Mismo patron para techos-verdes: rutas especificas con assertTechosVerdes()
+  // interno, montadas antes del catch-all generico de observatoryAdminRoutes.
+  app.use('/api/v1/observatory', techosVerdesAttributionRoutes);
   app.use('/api/v1/observatory', observatoryAdminRoutes);
   app.use('/api/v1/observatory', observatoryDetectorRoutes);
   app.use('/api/v1/observatory', observatoryAIRoutes);

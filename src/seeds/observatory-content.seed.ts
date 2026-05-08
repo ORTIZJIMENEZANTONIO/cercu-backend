@@ -10,6 +10,8 @@ import { ObsCmsSection } from '../entities/observatory/CmsSection';
 import { ProspectSubmission, ProspectStatus, ProspectSource } from '../entities/observatory/ProspectSubmission';
 import { ObsHumedalTier } from '../entities/observatory/HumedalTier';
 import { ObsHumedalContributor } from '../entities/observatory/HumedalContributor';
+import { ObsTechosVerdesTier } from '../entities/observatory/TechosVerdesTier';
+import { ObsTechosVerdesContributor } from '../entities/observatory/TechosVerdesContributor';
 import * as crypto from 'crypto';
 
 export async function seedObservatoryContent() {
@@ -460,11 +462,30 @@ export async function seedObservatoryContent() {
   const cmsRepo = AppDataSource.getRepository(ObsCmsSection);
   const humedalesCmsCount = await cmsRepo.count({ where: { observatory: 'humedales' } });
   if (humedalesCmsCount === 0) {
+    // Set CMS completo de humedales — espejo de cms-defaults.ts del frontend.
+    // El usuario puede editarlo todo via /admin/contenido. Si la BBDD ya tiene
+    // alguna seccion humedales, este bloque NO corre; en ese caso usar la
+    // migracion 1740-SeedExpandedCmsSections para upsert por seccion.
     await cmsRepo.save(cmsRepo.create([
+      // ── home ──
       {
-        observatory: 'humedales',
-        pageSlug: 'home',
-        sectionKey: 'features',
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'hero',
+        items: [{
+          eyebrow: 'Plataforma abierta',
+          titleLine1: 'Observatorio de',
+          titleLine2: 'Humedales Artificiales',
+          titleLine3: 'CDMX',
+          subtitle: 'Monitoreo, inventario y analisis de humedales artificiales en la Ciudad de Mexico. Infraestructura verde y soluciones basadas en la naturaleza.',
+          primaryLabel: 'Explorar inventario',
+          primaryTo: '/inventario',
+          primaryIcon: 'lucide:compass',
+          secondaryLabel: 'Registra tu humedal',
+          secondaryTo: '/registra',
+        }],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'features',
         items: [
           { title: 'Inventario geoespacial', description: 'Localizacion y caracterizacion de humedales artificiales en la Ciudad de Mexico.', to: '/inventario', bg: 'bg-primary-50', iconColor: 'text-primary', icon: 'lucide:map-pin' },
           { title: 'Servicios ecosistemicos', description: 'Analisis de beneficios ambientales: tratamiento de agua, habitat para fauna, captura de carbono.', to: '/analisis/indicadores', bg: 'bg-eco/10', iconColor: 'text-eco', icon: 'lucide:droplets' },
@@ -473,9 +494,17 @@ export async function seedObservatoryContent() {
         updatedBy: 'seed',
       },
       {
-        observatory: 'humedales',
-        pageSlug: 'home',
-        sectionKey: 'tipologias',
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'steps',
+        items: [
+          { title: 'Identificacion', description: 'Localizacion de humedales artificiales existentes en la CDMX mediante fuentes oficiales, academicas y de trabajo de campo.' },
+          { title: 'Caracterizacion', description: 'Documentacion de tipo, vegetacion, sustrato, superficie y capacidad de tratamiento.' },
+          { title: 'Analisis', description: 'Evaluacion de servicios ecosistemicos y comparacion entre tipologias de humedales.' },
+          { title: 'Visualizacion', description: 'Presentacion interactiva en mapas y graficas para tomadores de decisiones.' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'tipologias',
         items: [
           { title: 'HA flujo superficial (FWS)', description: 'El agua fluye visiblemente sobre el sustrato, similar a un humedal natural.', examples: 'Anfibium, Playa de Aves, Vivero Tlaxialtemalco, Cerro de la Estrella', badge: 'FWS', badgeClass: 'badge-secondary' },
           { title: 'HA flujo subsuperficial (SFS)', description: 'El agua fluye a traves del sustrato sin ser visible en la superficie.', examples: 'Parque Ecologico Cuitlahuac, Segundo Aragon, CIBAC Cuemanco', badge: 'HSSF', badgeClass: 'badge-primary' },
@@ -484,9 +513,29 @@ export async function seedObservatoryContent() {
         updatedBy: 'seed',
       },
       {
-        observatory: 'humedales',
-        pageSlug: 'sobre',
-        sectionKey: 'criterios',
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'servicios',
+        items: [
+          { title: 'Tratamiento de agua', icon: 'lucide:droplets' },
+          { title: 'Habitat para fauna', icon: 'lucide:bird' },
+          { title: 'Captura de carbono', icon: 'lucide:leaf' },
+          { title: 'Regulacion termica', icon: 'lucide:thermometer' },
+          { title: 'Control de inundaciones', icon: 'lucide:waves' },
+          { title: 'Educacion ambiental', icon: 'lucide:book-open' },
+        ],
+        updatedBy: 'seed',
+      },
+      // ── sobre ──
+      {
+        observatory: 'humedales', pageSlug: 'sobre', sectionKey: 'objetivos',
+        items: [
+          { title: 'Sistematizar', description: 'Organizar la informacion dispersa sobre humedales artificiales en la CDMX en un repositorio accesible.', icon: '📋' },
+          { title: 'Visualizar', description: 'Mostrar la distribucion geoespacial y caracteristicas tecnicas de cada humedal en mapas interactivos.', icon: '🗺️' },
+          { title: 'Analizar', description: 'Evaluar los servicios ecosistemicos y su contribucion a la sustentabilidad urbana de la ciudad.', icon: '📊' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'sobre', sectionKey: 'criterios',
         items: [
           { title: 'Ubicacion y año', description: 'Coordenadas geograficas y año de implementacion.', icon: '📍' },
           { title: 'Tipo de humedal artificial', description: 'Clasificacion por sistema de flujo: HA de flujo superficial (FWS), HA de flujo subsuperficial horizontal (HSSF) o vertical (VSSF), y sistemas hibridos.', icon: '🏷️' },
@@ -497,8 +546,84 @@ export async function seedObservatoryContent() {
         ],
         updatedBy: 'seed',
       },
+      {
+        observatory: 'humedales', pageSlug: 'sobre', sectionKey: 'normativas',
+        items: [
+          { title: 'Ley de Aguas de la CDMX', description: 'Marco regulatorio para el manejo integral del agua en la Ciudad de Mexico.' },
+          { title: 'Programa de Medio Ambiente CDMX', description: 'Estrategia de sustentabilidad que incluye infraestructura verde.' },
+          { title: 'NOM-001-SEMARNAT-2021', description: 'Limites permisibles de contaminantes en descargas de aguas residuales.' },
+          { title: 'ODS 6 — Agua limpia y saneamiento', description: 'Garantizar la disponibilidad y gestion sostenible del agua.' },
+          { title: 'ODS 11 — Ciudades sostenibles', description: 'Lograr que ciudades sean inclusivas, seguras, resilientes y sostenibles.' },
+          { title: 'ODS 15 — Vida de ecosistemas terrestres', description: 'Proteger, restaurar y promover el uso sostenible de los ecosistemas.' },
+        ],
+        updatedBy: 'seed',
+      },
+      // ── analisis hub ──
+      {
+        observatory: 'humedales', pageSlug: 'analisis', sectionKey: 'sections',
+        items: [
+          { to: '/analisis/indicadores', title: 'Indicadores y distribucion', description: 'Graficas de distribucion geografica, tipologica y de servicios ecosistemicos.', icon: 'lucide:bar-chart-3', bg: 'bg-primary-50', iconColor: 'text-primary', accentColor: 'bg-primary' },
+          { to: '/analisis/brecha', title: 'Brecha de cobertura', description: 'Analisis de las 16 alcaldias: indice de necesidad, mapa de cobertura y ranking de prioridad.', icon: 'lucide:map', bg: 'bg-eco/10', iconColor: 'text-eco', accentColor: 'bg-eco' },
+          { to: '/analisis/hallazgos', title: 'Hallazgos y recomendaciones', description: 'Sintesis del inventario Fase 1, comparativo de costos y propuestas para la politica publica.', icon: 'lucide:lightbulb', bg: 'bg-accent/10', iconColor: 'text-accent-dark', accentColor: 'bg-accent' },
+        ],
+        updatedBy: 'seed',
+      },
+      // ── inventario ──
+      { observatory: 'humedales', pageSlug: 'inventario', sectionKey: 'hero', items: [{ title: 'Inventario de humedales', subtitle: 'Sistema de busqueda, filtros y vista detallada de los humedales artificiales documentados en CDMX.', cta: 'Registra un humedal', ctaLink: '/registra' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'inventario', sectionKey: 'helpText', items: [{ title: '¿Que encontraras aqui?', description: 'Cada tarjeta muestra el tipo de humedal (FWS / SFS / Hibrido), año, alcaldia, vegetacion y servicios ecosistemicos documentados. Toca una tarjeta para ver la ficha completa.' }], updatedBy: 'seed' },
+      // ── mapa ──
+      { observatory: 'humedales', pageSlug: 'mapa', sectionKey: 'hero', items: [{ title: 'Mapa interactivo', subtitle: 'Distribucion geografica de los humedales artificiales en la CDMX. Cada marcador despliega los datos clave del sitio.', cta: 'Ver inventario', ctaLink: '/inventario' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'mapa', sectionKey: 'legend', items: [
+        { color: 'bg-primary', label: 'Activo', description: 'Humedal en operacion regular' },
+        { color: 'bg-accent', label: 'En expansion', description: 'En construccion de etapa nueva' },
+        { color: 'bg-secondary', label: 'Piloto', description: 'Demostrativo o experimental' },
+        { color: 'bg-slate-400', label: 'Pendiente verificacion', description: 'Sitio reportado sin confirmacion oficial' },
+      ], updatedBy: 'seed' },
+      // ── notihumedal ──
+      { observatory: 'humedales', pageSlug: 'notihumedal', sectionKey: 'hero', items: [{ title: 'Notihumedal', subtitle: 'Notas, comunicados y publicaciones recientes sobre humedales artificiales en CDMX y Mexico.', cta: '', ctaLink: '' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'notihumedal', sectionKey: 'emptyState', items: [{ title: 'Aun no hay articulos', description: 'Los nuevos articulos publicados apareceran aqui. Tambien puedes seguirnos por RSS.' }], updatedBy: 'seed' },
+      // ── registra ──
+      { observatory: 'humedales', pageSlug: 'registra', sectionKey: 'hero', items: [{ title: 'Registra un humedal', subtitle: 'Aporta tu conocimiento al observatorio. Tu reporte pasa por revision de un especialista antes de publicarse.', cta: '', ctaLink: '' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'registra', sectionKey: 'steps', items: [
+        { title: 'Paso 1', label: 'Datos tecnicos', description: 'Ubicacion, tipo de flujo, vegetacion, sustrato y capacidad. Llena lo que tengas; los campos opcionales se pueden completar despues.' },
+        { title: 'Paso 2', label: 'Documento de respaldo', description: 'Si tienes un PDF, paper o reporte que documente el humedal, subelo o pega el enlace. Es opcional pero acelera la verificacion.' },
+        { title: 'Paso 3', label: 'Confirmacion', description: 'Revisa el resumen y envia. Recibiras respuesta del equipo en 5-10 dias habiles.' },
+      ], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'registra', sectionKey: 'confirmation', items: [{ title: '¡Gracias por tu aporte!', description: 'Tu reporte entro a la cola de revision. Si proporcionaste correo, te avisaremos del resultado.' }], updatedBy: 'seed' },
+      // ── analisis-* ──
+      { observatory: 'humedales', pageSlug: 'analisis-indicadores', sectionKey: 'hero', items: [{ title: 'Indicadores', subtitle: 'Distribucion, servicios ecosistemicos, comparativa tecnica y evidencia cientifica.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'analisis-indicadores', sectionKey: 'tabs', items: [
+        { id: 'distribucion', label: 'Distribucion', description: 'Por alcaldia, tipologia y superficie' },
+        { id: 'servicios', label: 'Servicios ecosistemicos', description: 'Frecuencia y matriz humedal x servicio' },
+        { id: 'comparativo', label: 'Analisis comparativo', description: 'Timeline + tabla tecnica completa' },
+        { id: 'evidencia', label: 'Evidencia cientifica', description: 'Eficiencias documentadas y respaldo academico' },
+      ], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'analisis-brecha', sectionKey: 'hero', items: [{ title: 'Brecha de cobertura', subtitle: 'Las 9 alcaldias sin humedal artificial vs. las 7 que ya tienen. Indice de necesidad y ranking.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'analisis-brecha', sectionKey: 'methodology', items: [{ title: 'Como se calcula el indice de necesidad', description: 'IN = (inundacion x 0.30) + (calor x 0.25) + (escasez de agua x 0.30) + (densidad poblacional normalizada x 0.15). Escalas 1-5 ordinales.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'analisis-hallazgos', sectionKey: 'hero', items: [{ title: 'Hallazgos y recomendaciones', subtitle: 'Sintesis del inventario Fase 1: 4 hallazgos, recomendaciones de politica publica y comparativo de costos.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'analisis-hallazgos', sectionKey: 'callToAction', items: [{ title: 'Quiero participar en politica publica', description: 'Si representas a una alcaldia, dependencia o universidad y quieres explorar implementar humedales artificiales, escribenos.', cta: 'Contacto', ctaLink: '/sobre' }], updatedBy: 'seed' },
+      // ── contributors (red de tiers) ──
+      { observatory: 'humedales', pageSlug: 'contributors', sectionKey: 'hero', items: [{ title: 'Red de contribuyentes', subtitle: 'Personas, instituciones y comunidades que aportan al observatorio. Cinco modos de participacion.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'contributors', sectionKey: 'intro', items: [{ title: 'Cinco modos de participacion', description: 'Cada modo es una forma distinta de aportar (no un nivel a alcanzar). Aprendiz reporta, Observador da seguimiento, Caracterizador mide, Especialista investiga, Custodio resguarda.' }], updatedBy: 'seed' },
+      // ── footer ──
+      { observatory: 'humedales', pageSlug: 'footer', sectionKey: 'brand', items: [{ title: 'Observatorio de Humedales Artificiales CDMX', subtitle: 'Una iniciativa CIIEMAD-IPN', description: 'Plataforma de monitoreo, inventario y analisis de humedales artificiales en la Ciudad de Mexico.' }], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'footer', sectionKey: 'sources', items: [
+        { label: 'CIIEMAD - IPN', href: 'https://www.ciiemad.ipn.mx' },
+        { label: 'CONAGUA - Inventario Nacional de Humedales', href: 'https://sigagis.conagua.gob.mx/humedales/' },
+        { label: 'CONABIO - SIMOH-Mx', href: 'https://www.biodiversidad.gob.mx/monitoreo/simoh-mx' },
+        { label: 'OpenStreetMap (Overpass API)', href: 'https://overpass-api.de' },
+      ], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'footer', sectionKey: 'quickLinks', items: [
+        { label: 'Mapa', to: '/mapa' },
+        { label: 'Inventario', to: '/inventario' },
+        { label: 'Analisis', to: '/analisis' },
+        { label: 'Notihumedal', to: '/notihumedal' },
+        { label: 'Sobre', to: '/sobre' },
+        { label: 'Registra un humedal', to: '/registra' },
+      ], updatedBy: 'seed' },
+      { observatory: 'humedales', pageSlug: 'footer', sectionKey: 'legal', items: [{ body: 'Plataforma de datos abiertos. Licencia de software Apache 2.0. Contenido editorial bajo licencia CC BY 4.0 con atribucion al inventario Fase 1 (Dominguez Solis, CIIEMAD-IPN).', copyright: '© 2026 Observatorio de Humedales Artificiales CDMX.' }], updatedBy: 'seed' },
     ]));
-    console.log('  ObsCmsSection (humedales): 3 records created');
+    console.log('  ObsCmsSection (humedales): ~25 records created (CMS expandido)');
   }
 
   // ── CMS Sections (arrecifes) ──
@@ -819,6 +944,128 @@ export async function seedObservatoryContent() {
       },
     ]));
     console.log('  ObsHumedalContributor: 3 records created');
+  }
+
+  // ── Techos Verdes Tiers (modos de participacion) ──
+  const tvTierRepo = AppDataSource.getRepository(ObsTechosVerdesTier);
+  if ((await tvTierRepo.count()) === 0) {
+    await tvTierRepo.save(tvTierRepo.create([
+      {
+        slug: 'aprendiz',
+        label: 'Aprendiz',
+        description: 'Primera entrada al observatorio. Reporta una azotea observada o sugiere un sitio candidato.',
+        minScore: 0, maxScore: 19,
+        color: 'slate', icon: 'lucide:seedling', sortOrder: 1,
+        modeTitle: 'Curiosidad ciudadana',
+        audience: 'Vecinas, vecinos, peatones que ven una azotea con potencial.',
+        contributions: [
+          'Reportar una azotea candidata via /registra',
+          'Compartir foto y direccion aproximada',
+          'Avisar de modificaciones visibles (nuevo techo verde, retiro de obstrucciones)',
+        ],
+        bridge: 'Cuando dos reportes son validados pasa a Reportador.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'reportador',
+        label: 'Reportador',
+        description: 'Da seguimiento a una o varias azoteas en el tiempo. Sus aportes ya tienen referencia exacta y han sido validados al menos dos veces.',
+        minScore: 20, maxScore: 99,
+        color: 'secondary', icon: 'lucide:eye', sortOrder: 2,
+        modeTitle: 'Observacion sostenida',
+        audience: 'Personas que viven o trabajan cerca de techos verdes y los visitan periodicamente.',
+        contributions: [
+          'Series de fotos del mismo techo cada 3-6 meses',
+          'Notas de mantenimiento o estado vegetativo',
+          'Reporte de obras o intervenciones cercanas',
+        ],
+        bridge: 'Si comparte mediciones tecnicas (area, pendiente, sustrato) escala a Caracterizador.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'caracterizador',
+        label: 'Caracterizador',
+        description: 'Aporta datos tecnicos: superficie, pendiente, tipo de techo (extensivo / semi-intensivo / intensivo), sustrato, vegetacion identificada.',
+        minScore: 100, maxScore: 299,
+        color: 'eco', icon: 'lucide:ruler', sortOrder: 3,
+        modeTitle: 'Caracterizacion tecnica',
+        audience: 'Estudiantes de arquitectura/ingenieria, tecnicos urbanos, ONGs locales.',
+        contributions: [
+          'Mediciones de superficie y pendiente',
+          'Identificacion de tipo de techo verde y sustrato',
+          'Levantamiento de vegetacion',
+        ],
+        bridge: 'Si publica datos en revista o tesis, pasa a Especialista.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'especialista',
+        label: 'Especialista',
+        description: 'Profesional con publicaciones, tesis o proyectos formales sobre techos verdes. Sus aportes son citables y suelen incluir fuentes.',
+        minScore: 300, maxScore: 999,
+        color: 'primary', icon: 'lucide:microscope', sortOrder: 4,
+        modeTitle: 'Diseno e investigacion',
+        audience: 'Arquitectos, ingenieros estructurales, academia (UNAM, IPN, UAM) y consultoras.',
+        contributions: [
+          'Diseno y memoria de calculo de techos verdes',
+          'Publicaciones y casos de estudio',
+          'Auditoria estructural y de aptitud',
+        ],
+        bridge: 'Cuando coordina equipos o sostiene un sitio en operacion, asume rol de Operador.',
+        visible: true, archived: false,
+      },
+      {
+        slug: 'operador',
+        label: 'Operador',
+        description: 'Empresa, gobierno o institucion que instala y mantiene techos verdes en operacion. Asegura datos historicos y replicas.',
+        minScore: 1000, maxScore: null,
+        color: 'accent', icon: 'lucide:shield-check', sortOrder: 5,
+        modeTitle: 'Operacion institucional',
+        audience: 'Empresas constructoras, dependencias gubernamentales (SEDEMA), ONGs grandes y operadores publicos.',
+        contributions: [
+          'Instalacion y mantenimiento de techos verdes',
+          'Series de monitoreo (temperatura, humedad, escurrimiento)',
+          'Formacion de cuadros y replica en otros edificios',
+        ],
+        bridge: 'Es el extremo del modelo: integra los aportes de los otros modos en politica publica.',
+        visible: true, archived: false,
+      },
+    ]));
+    console.log('  ObsTechosVerdesTier: 5 records created');
+  }
+
+  // ── Techos Verdes Contributors (semilla minima) ──
+  const tvContribRepo = AppDataSource.getRepository(ObsTechosVerdesContributor);
+  if ((await tvContribRepo.count()) === 0) {
+    await tvContribRepo.save(tvContribRepo.create([
+      {
+        displayName: 'CIIEMAD-IPN',
+        handle: 'ciiemad-ipn-techos',
+        role: 'academia',
+        affiliation: 'CIIEMAD - Instituto Politecnico Nacional',
+        bio: 'Centro Interdisciplinario de Investigaciones y Estudios sobre Medio Ambiente y Desarrollo, IPN. Coordina el inventario de techos verdes en CDMX.',
+        alcaldia: 'Gustavo A. Madero',
+        joinedAt: '2024-01-15',
+        tier: 'operador',
+        reputationScore: 1500, validatedContributions: 150, rejectedContributions: 0,
+        acceptanceRate: 1.0, averageQuality: 95, consecutiveMonthsActive: 24,
+        publicProfile: true, verified: true, visible: true, archived: false,
+      },
+      {
+        displayName: 'Equipo SEDEMA',
+        handle: 'sedema-cdmx',
+        role: 'gobierno',
+        affiliation: 'Secretaria del Medio Ambiente, Gobierno de la CDMX',
+        bio: 'SEDEMA opera el programa de azoteas verdes y naturadas de la Ciudad de Mexico. Provee datos de inventario y normativa.',
+        alcaldia: 'Cuauhtemoc',
+        joinedAt: '2024-01-20',
+        tier: 'operador',
+        reputationScore: 1200, validatedContributions: 120, rejectedContributions: 0,
+        acceptanceRate: 1.0, averageQuality: 92, consecutiveMonthsActive: 24,
+        publicProfile: true, verified: true, visible: true, archived: false,
+      },
+    ]));
+    console.log('  ObsTechosVerdesContributor: 2 records created');
   }
 
   console.log('Observatory content seed complete');
