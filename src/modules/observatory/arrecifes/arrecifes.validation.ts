@@ -194,3 +194,20 @@ export const reefNewsSchema = Joi.object({
 export const reefNewsProspectRejectSchema = Joi.object({
   notes: Joi.string().max(500).required(),
 });
+
+// ── Coastal Intrusion (detector ZOFEMAT) ──
+export const coastalIntrusionVerifySchema = Joi.object({
+  notes: Joi.string().allow('', null).optional(),
+});
+
+export const coastalIntrusionDismissSchema = Joi.object({
+  notes: Joi.string().min(1).max(500).required(),
+});
+
+export const coastalIntrusionEscalateSchema = Joi.object({
+  title: Joi.string().min(3).max(255).required(),
+  summary: Joi.string().min(10).required(),
+  fullStory: Joi.string().allow('', null).optional(),
+  intensity: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),
+  affectedCommunities: Joi.array().items(Joi.string()).optional(),
+});

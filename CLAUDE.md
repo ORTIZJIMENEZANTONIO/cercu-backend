@@ -73,7 +73,7 @@ cercu-backend/
 │   ├── app.ts                # Express setup: middleware → routes → error handler
 │   ├── config/index.ts       # Centralized env config
 │   ├── ormconfig.ts          # TypeORM DataSource (auto-sync in dev, UTF8mb4)
-│   ├── entities/             # 52 TypeORM entities (34 core + 18 observatory)
+│   ├── entities/             # 53 TypeORM entities (34 core + 19 observatory)
 │   │   └── observatory/     # 18 entities: ObservatoryAdmin, ProspectSubmission, Obs* (content/CMS/news +
 │   │                         # arrecifes: Reef (con climateData NASA POWER cacheada),
 │   │                         # Conflict (con geometry GeoJSON), Contributor, Observation,
@@ -463,6 +463,9 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `1722000000000-CreateArrecifesTables.ts` — crea las 5 tablas iniciales (`obs_reefs`, `obs_conflicts`, `obs_contributors`, `obs_observations`, `obs_bleaching_alerts`) con índices (ocean, status, intensity, tier, etc.). Idempotente vía `SHOW TABLES LIKE`.
 - `1723000000000-AddGalleryToObsReefs.ts` — añade columna `gallery JSON NULL` a `obs_reefs`. Idempotente vía `SHOW COLUMNS LIKE`.
 - `1724000000000-AddLayersTiersAndConflictGeometry.ts` — crea `obs_layers` (catálogo + uploads) y `obs_tiers` (modos de participación / escalas reputacionales) + agrega `geometry JSON NULL` a `obs_conflicts`. Sólo `UNIQUE INDEX` sobre `slug` (sin INDEX adicional) para evitar el bug TypeORM "Duplicate key name". Idempotente.
+- `1725...` → `1732000000000` ya documentadas en sus secciones respectivas (NASA POWER + InteractionEvent · isActive/lastLogin admin · scraper notihumedal · snapshots · noticias arrecifes · coastal intrusions Fase 1/2/3).
+- `1733000000000-EnsureCmsSectionsTable.ts` — crea `obs_cms_sections` si no existe. Cierra brecha histórica: la entidad `ObsCmsSection` se creó hace tiempo con auto-sync y nunca tuvo migración explícita.
+- `1734000000000-EnsureProspectSubmissionsTable.ts` — crea `obs_prospect_submissions` si no existe. Cola compartida de prospectos para techos-verdes y humedales (no arrecifes — éste tiene `obs_observations` y `obs_reef_news_prospects` propios). Misma situación que 1733: la entidad existía sin migración explícita.
 
 **Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
 - `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`) + **13 layers** iniciales (NOAA CRW, NASA MODIS/PACE, ESA Sentinel-2, GEBCO, CONABIO ANP+coral, CONANP, GFW, NOAA SaWS, INEGI). Las layers son `kind=external_url`; el admin puede subir `kind=uploaded_file` después.
@@ -607,6 +610,116 @@ Trigger: manual desde el botón **"Ejecutar Scraper"** del admin
 (`POST /admin/notihumedal/scraper/run`). No hay cron job automático todavía —
 se dejó como manual para que el admin pueda revisar las novedades cuando tenga
 capacidad de validar.
+
+### Coastal Intrusion Detector (ZOFEMAT, arrecifes)
+**Directory:** `src/modules/observatory/arrecifes/coastalIntrusion.service.ts`
+**Entity:** `ObsCoastalIntrusion` (`obs_coastal_intrusions`) — id, reefId (FK
+nullable), osmId (`way/12345` único por reefId), osmTags (JSON), geometry
+(GeoJSON Polygon footprint), centroidLat/Lng, areaM2, zofematOverlapPct (%
+del footprint dentro del buffer), status (`candidate`|`verified`|`dismissed`|
+`escalated`), source, detectedAt, reviewedBy/At, reviewerNotes,
+escalatedConflictId (FK→`obs_conflicts`).
+
+Pipeline (deliberadamente simple, sin ML):
+1. Para cada arrecife, bbox de ±0.05° (~5 km) alrededor del centroide.
+2. Overpass `way[natural=coastline]` → líneas de costa OSM.
+3. Turf `buffer` 20 m → polígono ZOFEMAT aproximado (unión de buffers por
+   segmento). Aproximación honesta documentada como tal — no reemplaza el
+   polígono oficial SEMARNAT cuando esté disponible.
+4. Overpass `way[building]` → footprints de edificios.
+5. Para cada building: `turf.booleanIntersects(building, zofemat)`. Si toca,
+   calcula overlap % vía `intersect/area`.
+6. Upsert por `(reefId, osmId)`. Si el admin ya cambió el status, el
+   detector NO sobrescribe (sólo refresca geometry/área).
+
+Throttle: 1.5 s entre arrecifes (Overpass tiene rate-limit blando).
+
+Endpoints (admin-only — la entidad NO se expone en endpoints públicos):
+```
+GET    /admin/coastal-intrusions[?reefId=&status=&page=&limit=]
+GET    /admin/coastal-intrusions/:id
+POST   /admin/coastal-intrusions/run[?reefId=]   # un reef o todos
+POST   /admin/coastal-intrusions/:id/verify      # body: {notes?}
+POST   /admin/coastal-intrusions/:id/dismiss     # body: {notes} (req)
+POST   /admin/coastal-intrusions/:id/escalate    # body: {title, summary,
+                                                 # fullStory?, intensity?,
+                                                 # affectedCommunities?}
+```
+
+`escalate` crea un `ObsConflict` con `threats: ['coastal_development']`,
+`status: 'emerging'`, `geometry: <intrusion.geometry>`, `visible: false`
+(oculto hasta que el admin complete la narrativa) y deja la intrusión en
+status `escalated` apuntando al conflictId. Trazabilidad bidireccional.
+
+Limitaciones honestas (documentadas también en la página admin):
+- OSM building coverage es desigual: cubre Cancún/Cozumel, no Banco
+  Chinchorro / Alacranes (atolones offshore).
+- Buffer de 20 m simplifica realidad legal (línea de pleamar es dinámica).
+- Detección NO prueba invasión legal — la cola es admin-only por diseño.
+
+**Fase 2: análisis de novedad temporal vía NDBI Sentinel-2.** Para cada
+candidato detectado en Fase 1 podemos preguntar "¿es una construcción nueva
+o legacy?". Algoritmo:
+1. Pulla mediana de bandas B8 (NIR) y B11 (SWIR1) en dos epochs vía Earth
+   Engine REST API: baseline ≈ 7 años atrás (±6 meses) y current = últimos
+   6 meses. Reutiliza `utils/geeAuth.ts` (extraído del módulo
+   `remote-sensing/` para compartir el JWT con service account).
+2. NDBI = (B11 − B8) / (B11 + B8). > 0 = superficie construida.
+3. `noveltyScore` 0–100 derivado de baseline + delta:
+   - baseline weight = clamp((0.1 − baseline) / 0.2, 0, 1)
+   - delta weight = clamp(delta / 0.4, 0, 1)
+   - score = baselineWeight × deltaWeight × 100
+   - Score alto requiere AMBOS: baseline bajo (no construido antes) Y
+     delta positivo (algo apareció). Penaliza falsos positivos.
+4. Persiste `ndbiBaseline`, `ndbiCurrent`, `ndbiDelta`, `noveltyScore`,
+   `noveltyAnalyzedAt`, `noveltyEpochs` en la fila.
+
+Endpoints Fase 2:
+```
+POST /admin/coastal-intrusions/:id/analyze-novelty[?baselineYearsBack=N]
+POST /admin/coastal-intrusions/analyze-novelty-batch[?reefId=&status=&limit=]
+```
+
+Batch procesa 30 candidatos por defecto (los más grandes primero, sin
+score previo). Throttle 600 ms entre llamadas GEE. Devuelve 503 si las
+credenciales no están configuradas; degrada limpiamente.
+
+Migración: `1731000000000-AddNoveltyToCoastalIntrusions.ts` añade 6
+columnas idempotentes (`ndbiBaseline`, `ndbiCurrent`, `ndbiDelta`,
+`noveltyScore`, `noveltyAnalyzedAt`, `noveltyEpochs`).
+
+**Fase 3: muestreo polígono-completo + NDVI corroborativo + serie temporal anual.**
+Mejoras al algoritmo de Fase 2:
+
+1. `samplePolygonBands(polygon, fromDate, toDate)` reemplaza el muestreo
+   por punto. Usa `Geometry.Polygon` en GEE con `bestEffort: true` para
+   footprints muy chicos. Devuelve NDBI + NDVI en una sola llamada.
+2. NDVI = (B8 − B4) / (B8 + B4). Se usa como corroboración del NDBI:
+   - Si NDVI bajó (delta ≤ −0.15): construcción genuina removió vegetación
+     → multiplicador ×1.0 sobre el score.
+   - Si NDVI no se movió o subió: cambio sospechoso (artefacto imagery o
+     sin clearing real) → multiplicador degrada hasta ×0.6.
+3. `noveltyScore = baselineWeight × deltaWeight × ndviMultiplier × 100`.
+4. Serie temporal anual opt-in: `POST /admin/coastal-intrusions/:id/timeseries
+   [?fromYear=YYYY]` pulla 8–10 años (Sentinel-2 SR Harmonized cobertura
+   global completa desde 2017). Cada año = mediana imagery sobre el polígono
+   completo, con NDBI + NDVI. Throttle 1 s entre años. Persiste en
+   `noveltyTimeSeries` (JSON). Útil para ver CUÁNDO empezó la construcción.
+
+Migración: `1732000000000-AddPhase3FieldsToCoastalIntrusions.ts` añade
+`ndviBaseline`, `ndviCurrent`, `ndviDelta`, `samplingMethod` (`point` |
+`polygon`), `noveltyTimeSeries` (JSON).
+
+Limitaciones Fase 2:
+- Requiere `GEE_SERVICE_ACCOUNT_KEY` + `GEE_PROJECT_ID` en .env. Sin esto
+  el endpoint devuelve 503 (no rompe el resto del flujo).
+- Cada llamada GEE toma 1–2 s. Batch de 30 ≈ 60 s.
+- NDBI sobre el centroide del polígono, no sobre el polígono completo —
+  aproximación razonable para edificios pequeños, ruidosa para complejos
+  hoteleros grandes.
+- El umbral de 0.4 en delta es heurístico; está calibrado para construcción
+  pétrea visible. Estructuras ligeras (palapa, lona) pueden quedar bajo el
+  radar.
 
 ### Reef News Scraper (pipeline multi-fuente, arrecifes)
 **Directory:** `src/modules/observatory/arrecifes/reefNews-scraper.service.ts`

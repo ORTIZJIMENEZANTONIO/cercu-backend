@@ -57,11 +57,16 @@ export function createApp() {
   app.use('/api/v1/gamification', gamificationRoutes);
   app.use('/api/guardianes', guardianesRoutes);
   app.use('/api/v1/observatory/auth', observatoryAuthRoutes);
+  // Las rutas de arrecifes usan paths LITERALES (`/arrecifes/...`) y deben
+  // montarse ANTES del catch-all genérico `/:observatory/...` de
+  // observatoryAdminRoutes. Si no, p.ej. GET /arrecifes/admin/summary cae
+  // al handler genérico (humedales-style, `contenido: {}` + `prospectos`)
+  // y no al arrecifes-específico (rico, con `content`/`totals`/`observations`).
+  app.use('/api/v1/observatory', arrecifesRoutes);
   app.use('/api/v1/observatory', observatoryAdminRoutes);
   app.use('/api/v1/observatory', observatoryDetectorRoutes);
   app.use('/api/v1/observatory', observatoryAIRoutes);
   app.use('/api/v1/observatory', observatoryRemoteSensingRoutes);
-  app.use('/api/v1/observatory', arrecifesRoutes);
   app.use('/api/v1', observatoryEventsRoutes);
 
   app.use(errorHandler);

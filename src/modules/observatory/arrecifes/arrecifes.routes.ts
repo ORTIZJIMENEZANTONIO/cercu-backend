@@ -13,6 +13,9 @@ import {
   tierSchema,
   reefNewsSchema,
   reefNewsProspectRejectSchema,
+  coastalIntrusionVerifySchema,
+  coastalIntrusionDismissSchema,
+  coastalIntrusionEscalateSchema,
 } from './arrecifes.validation';
 import { uploadLayerFile } from './arrecifes.upload';
 import { asyncHandler } from '../../../utils/asyncHandler';
@@ -131,5 +134,18 @@ router.post('/arrecifes/admin/news/scraper/run', scope, auth, asyncHandler(c.run
 // Public read (visible + not archived)
 router.get('/arrecifes/news', asyncHandler(c.listReefNewsPublic));
 router.get('/arrecifes/news/:id', asyncHandler(c.getReefNews));
+
+// ─── Coastal Intrusion (detector ZOFEMAT, admin-only) ───
+router.get('/arrecifes/admin/coastal-intrusions', scope, auth, asyncHandler(c.listCoastalIntrusions));
+router.get('/arrecifes/admin/coastal-intrusions/:id', scope, auth, asyncHandler(c.getCoastalIntrusion));
+router.post('/arrecifes/admin/coastal-intrusions/run', scope, auth, asyncHandler(c.runCoastalIntrusionDetection));
+router.post('/arrecifes/admin/coastal-intrusions/:id/verify', scope, auth, validate(coastalIntrusionVerifySchema), asyncHandler(c.verifyCoastalIntrusion));
+router.post('/arrecifes/admin/coastal-intrusions/:id/dismiss', scope, auth, validate(coastalIntrusionDismissSchema), asyncHandler(c.dismissCoastalIntrusion));
+router.post('/arrecifes/admin/coastal-intrusions/:id/escalate', scope, auth, validate(coastalIntrusionEscalateSchema), asyncHandler(c.escalateCoastalIntrusion));
+// Fase 2: análisis de novedad temporal vía NDBI Sentinel-2
+router.post('/arrecifes/admin/coastal-intrusions/analyze-novelty-batch', scope, auth, asyncHandler(c.analyzeIntrusionNoveltyBatch));
+router.post('/arrecifes/admin/coastal-intrusions/:id/analyze-novelty', scope, auth, asyncHandler(c.analyzeIntrusionNovelty));
+// Fase 3: serie temporal anual (deep dive opt-in)
+router.post('/arrecifes/admin/coastal-intrusions/:id/timeseries', scope, auth, asyncHandler(c.generateIntrusionTimeSeries));
 
 export default router;

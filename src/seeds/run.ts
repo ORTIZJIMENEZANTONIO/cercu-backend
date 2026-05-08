@@ -12,6 +12,7 @@ import { seedArrecifesObservations } from './arrecifes-observations.seed';
 import { seedArrecifesAlerts } from './arrecifes-alerts.seed';
 import { seedArrecifesSnapshots } from './arrecifes-snapshots.seed';
 import { seedArrecifesNews } from './arrecifes-news.seed';
+import { seedArrecifesCoastalIntrusions } from './arrecifes-coastal-intrusions.seed';
 import { seedConfigKV } from './config-kv.seed';
 
 async function runSeeds() {
@@ -32,6 +33,7 @@ async function runSeeds() {
     await seedArrecifesAlerts();
     await seedArrecifesSnapshots();
     await seedArrecifesNews();
+    await seedArrecifesCoastalIntrusions();
 
     console.log('All seeds completed successfully');
     process.exit(0);

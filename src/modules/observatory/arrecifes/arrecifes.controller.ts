@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { ArrecifesService } from './arrecifes.service';
+import { CoastalIntrusionService } from './coastalIntrusion.service';
 
 const service = new ArrecifesService();
+const coastalService = new CoastalIntrusionService();
 
 const parseBoolStr = (q: any) => (typeof q === 'string' ? q : undefined);
 
@@ -424,6 +426,87 @@ export class ArrecifesController {
 
   async runReefNewsScraper(_req: Request, res: Response) {
     const result = await service.runReefNewsScraper();
+    res.json({ success: true, data: result });
+  }
+
+  // ─── Coastal Intrusion (detector ZOFEMAT) ───
+  async listCoastalIntrusions(req: Request, res: Response) {
+    const { reefId, status, page, limit } = req.query;
+    const result = await coastalService.list({
+      reefId: reefId ? Number(reefId) : undefined,
+      status: status as string | undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+    res.json({ success: true, ...result });
+  }
+
+  async getCoastalIntrusion(req: Request, res: Response) {
+    const result = await coastalService.get(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
+  async runCoastalIntrusionDetection(req: Request, res: Response) {
+    const reefId = req.query.reefId ? Number(req.query.reefId) : undefined;
+    const result = await coastalService.runDetection(reefId);
+    res.json({ success: true, data: result });
+  }
+
+  async verifyCoastalIntrusion(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await coastalService.verify(
+      Number(req.params.id),
+      adminId,
+      req.body.notes,
+    );
+    res.json({ success: true, data: result });
+  }
+
+  async dismissCoastalIntrusion(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await coastalService.dismiss(
+      Number(req.params.id),
+      adminId,
+      req.body.notes,
+    );
+    res.json({ success: true, data: result });
+  }
+
+  async escalateCoastalIntrusion(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await coastalService.escalate(
+      Number(req.params.id),
+      adminId,
+      req.body,
+    );
+    res.json({ success: true, data: result });
+  }
+
+  async analyzeIntrusionNovelty(req: Request, res: Response) {
+    const baselineYearsBack = req.query.baselineYearsBack
+      ? Number(req.query.baselineYearsBack)
+      : undefined;
+    const result = await coastalService.analyzeNovelty(Number(req.params.id), {
+      baselineYearsBack,
+    });
+    res.json({ success: true, data: result });
+  }
+
+  async analyzeIntrusionNoveltyBatch(req: Request, res: Response) {
+    const result = await coastalService.analyzeNoveltyBatch({
+      reefId: req.query.reefId ? Number(req.query.reefId) : undefined,
+      status: req.query.status as string | undefined,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+    });
+    res.json({ success: true, data: result });
+  }
+
+  async generateIntrusionTimeSeries(req: Request, res: Response) {
+    const fromYear = req.query.fromYear ? Number(req.query.fromYear) : undefined;
+    const result = await coastalService.generateNoveltyTimeSeries(
+      Number(req.params.id),
+      { fromYear },
+    );
     res.json({ success: true, data: result });
   }
 }
