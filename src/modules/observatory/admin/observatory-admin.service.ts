@@ -34,29 +34,147 @@ export class ObservatoryAdminService {
   // ══════════════════════════════════════
 
   async getSummary(observatory: string) {
+    const n = (v: unknown) => Number(v) || 0;
     const pRepo = prospectRepo();
-    const totalProspects = await pRepo.count({ where: { observatory } });
-    const pendingProspects = await pRepo.count({
-      where: { observatory, status: ProspectStatus.PENDIENTE },
-    });
-    const approvedProspects = await pRepo.count({
-      where: { observatory, status: ProspectStatus.APROBADO },
-    });
-    const rejectedProspects = await pRepo.count({
-      where: { observatory, status: ProspectStatus.RECHAZADO },
-    });
+
+    // Counts comunes a todos los observatorios.
+    const [
+      totalProspects,
+      pendingProspects,
+      approvedProspects,
+      rejectedProspects,
+      cmsSectionsCount,
+    ] = await Promise.all([
+      pRepo.count({ where: { observatory } }),
+      pRepo.count({ where: { observatory, status: ProspectStatus.PENDIENTE } }),
+      pRepo.count({ where: { observatory, status: ProspectStatus.APROBADO } }),
+      pRepo.count({ where: { observatory, status: ProspectStatus.RECHAZADO } }),
+      cmsSectionRepo().count({ where: { observatory } }),
+    ]);
 
     let contentCounts: Record<string, number> = {};
+    let extras: Record<string, any> = {};
+
     if (observatory === "techos-verdes") {
-      contentCounts = {
-        greenRoofs: await greenRoofRepo().count(),
-        candidates: await candidateRepo().count(),
-        validations: await validationRepo().count(),
+      const [
+        greenRoofs,
+        candidates,
+        validations,
+        candidatesByEstatus,
+        validationsByEstado,
+        greenRoofsByTipo,
+      ] = await Promise.all([
+        greenRoofRepo().count(),
+        candidateRepo().count(),
+        validationRepo().count(),
+        candidateRepo()
+          .createQueryBuilder("c")
+          .select("c.estatus", "estatus")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("c.estatus")
+          .getRawMany(),
+        validationRepo()
+          .createQueryBuilder("v")
+          .select("v.estado", "estado")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("v.estado")
+          .getRawMany(),
+        greenRoofRepo()
+          .createQueryBuilder("g")
+          .select("g.tipoTechoVerde", "tipo")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("g.tipoTechoVerde")
+          .getRawMany(),
+      ]);
+
+      // Score AHP: distribución por buckets.
+      const candidatesScored = await candidateRepo()
+        .createQueryBuilder("c")
+        .select(
+          "CASE WHEN c.scoreAptitud >= 80 THEN 'alto' WHEN c.scoreAptitud >= 60 THEN 'medio' ELSE 'bajo' END",
+          "bucket"
+        )
+        .addSelect("COUNT(*)", "count")
+        .where("c.scoreAptitud IS NOT NULL")
+        .groupBy("bucket")
+        .getRawMany();
+      const ahpBuckets = { alto: 0, medio: 0, bajo: 0 };
+      for (const row of candidatesScored) {
+        (ahpBuckets as any)[row.bucket] = Number(row.count);
+      }
+
+      contentCounts = { greenRoofs: n(greenRoofs), candidates: n(candidates), validations: n(validations) };
+      extras = {
+        candidatesByEstatus: candidatesByEstatus.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.estatus]: Number(r.count) }),
+          {}
+        ),
+        validationsByEstado: validationsByEstado.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.estado]: Number(r.count) }),
+          {}
+        ),
+        greenRoofsByTipo: greenRoofsByTipo.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.tipo]: Number(r.count) }),
+          {}
+        ),
+        ahpBuckets,
       };
     } else if (observatory === "humedales") {
+      const [
+        humedales,
+        hallazgos,
+        notihumedalTotal,
+        notihumedalProspectsTotal,
+        notihumedalProspectsPending,
+        humedalesByTipo,
+        humedalesByEstado,
+        hallazgosByPrioridad,
+      ] = await Promise.all([
+        humedalRepo().count(),
+        hallazgoRepo().count(),
+        notiRepo().count(),
+        prospectoNoticiaRepo().count(),
+        prospectoNoticiaRepo().count({ where: { estado: "pendiente" as any } } as any).catch(() => 0),
+        humedalRepo()
+          .createQueryBuilder("h")
+          .select("h.tipoHumedal", "tipo")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("h.tipoHumedal")
+          .getRawMany(),
+        humedalRepo()
+          .createQueryBuilder("h")
+          .select("h.estado", "estado")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("h.estado")
+          .getRawMany(),
+        hallazgoRepo()
+          .createQueryBuilder("h")
+          .select("h.impacto", "impacto")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("h.impacto")
+          .getRawMany()
+          .catch(() => [] as any[]),
+      ]);
+
       contentCounts = {
-        humedales: await humedalRepo().count(),
-        hallazgos: await hallazgoRepo().count(),
+        humedales: n(humedales),
+        hallazgos: n(hallazgos),
+        notihumedal: n(notihumedalTotal),
+      };
+      extras = {
+        humedalesByTipo: humedalesByTipo.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.tipo]: Number(r.count) }),
+          {}
+        ),
+        humedalesByEstado: humedalesByEstado.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.estado]: Number(r.count) }),
+          {}
+        ),
+        hallazgosByImpacto: hallazgosByPrioridad.reduce(
+          (acc: any, r: any) => ({ ...acc, [r.impacto ?? "sin_impacto"]: Number(r.count) }),
+          {}
+        ),
+        notiProspects: { total: n(notihumedalProspectsTotal), pending: n(notihumedalProspectsPending) },
       };
     }
 
@@ -64,11 +182,13 @@ export class ObservatoryAdminService {
       observatory,
       contenido: contentCounts,
       prospectos: {
-        total: totalProspects,
-        pendientes: pendingProspects,
-        aprobados: approvedProspects,
-        rechazados: rejectedProspects,
+        total: n(totalProspects),
+        pendientes: n(pendingProspects),
+        aprobados: n(approvedProspects),
+        rechazados: n(rejectedProspects),
       },
+      cmsSections: n(cmsSectionsCount),
+      ...extras,
     };
   }
 

@@ -174,6 +174,30 @@ interface DetectionResult {
   reason?: string;
 }
 
+interface DetectionRunSummary {
+  startedAt: Date;
+  finishedAt: Date;
+  reefsProcessed: number;
+  buildingsScanned: number;
+  candidates: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  perReef: DetectionResult[];
+}
+
+interface DetectorJob {
+  id: string;
+  status: 'running' | 'done' | 'error';
+  reefId: number | null;
+  startedAt: Date;
+  lastUpdatedAt: number;
+  progress: { current: number; total: number };
+  perReef: DetectionResult[];
+  result: DetectionRunSummary | null;
+  error: string | null;
+}
+
 export const detectIntrusionsForReef = async (
   reef: ObsReef,
 ): Promise<DetectionResult> => {
@@ -321,9 +345,16 @@ export class CoastalIntrusionService {
     return r;
   }
 
-  // Corre el detector para un reef específico, o todos si no se pasa id.
-  // Secuencial con delay para no saturar Overpass (rate-limit blando).
-  async runDetection(reefId?: number) {
+  // Corre el detector síncronamente (un reef o todos). Sigue disponible para
+  // CLI / cron, pero el endpoint HTTP usa `runDetectionAsync` para evitar
+  // timeouts del proxy nginx. Secuencial con delay para no saturar Overpass.
+  //
+  // `onProgress` se invoca después de cada reef con el resultado parcial —
+  // útil para que la UI vea progreso en tiempo real vía el job manager.
+  async runDetection(
+    reefId?: number,
+    onProgress?: (result: DetectionResult, idx: number, total: number) => void,
+  ) {
     const reefs = reefId
       ? [await reefRepo().findOne({ where: { id: reefId } })].filter(Boolean) as ObsReef[]
       : await reefRepo().find();
@@ -331,11 +362,13 @@ export class CoastalIntrusionService {
 
     const startedAt = new Date();
     const results: DetectionResult[] = [];
-    for (const reef of reefs) {
+    for (let i = 0; i < reefs.length; i++) {
+      const reef = reefs[i];
+      let result: DetectionResult;
       try {
-        results.push(await detectIntrusionsForReef(reef));
+        result = await detectIntrusionsForReef(reef);
       } catch (e: any) {
-        results.push({
+        result = {
           reefId: reef.id,
           reefName: reef.name,
           buildingsScanned: 0,
@@ -344,8 +377,11 @@ export class CoastalIntrusionService {
           updated: 0,
           skipped: 0,
           reason: `error: ${e?.message || 'unknown'}`,
-        });
+        };
       }
+      results.push(result);
+      onProgress?.(result, i + 1, reefs.length);
+
       // Throttle suave: Overpass agradece <0.5 req/s sostenido
       await new Promise((res) => setTimeout(res, 1500));
     }
@@ -368,6 +404,113 @@ export class CoastalIntrusionService {
       ...totals,
       perReef: results,
     };
+  }
+
+  // ───────────────────────── Job manager (in-memory) ─────────────────────────
+  //
+  // El detector corre 12 reefs × 2 queries Overpass (timeout 30s c/u) + 1.5s
+  // de throttle entre reefs → hasta 7 minutos en peor caso. Nginx mata las
+  // conexiones HTTP a los 60s, así que el endpoint POST /run lanza un job
+  // background y devuelve un `jobId`. El cliente hace polling al `GET
+  // /run/:jobId` para ver progreso y resultado final.
+  //
+  // Estado en memoria (Map). Se pierde al reiniciar el proceso PM2 — eso es
+  // aceptable porque el detector es idempotente: re-correrlo no duplica.
+  // Cleanup automático: jobs completados o erróreos viven 30 minutos para
+  // permitir revisión post-mortem; despues se purgan.
+
+  // Métodos estáticos en `globalThis` para sobrevivir al hot-reload de
+  // ts-node-dev en desarrollo.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static readonly _jobs: Map<string, DetectorJob> = (globalThis as any).__coastalDetectorJobs__ ?? new Map();
+  static {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).__coastalDetectorJobs__ = CoastalIntrusionService._jobs;
+  }
+
+  private static newJobId() {
+    return `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private static cleanupOldJobs() {
+    const now = Date.now();
+    for (const [id, job] of CoastalIntrusionService._jobs) {
+      if (job.status !== 'running' && now - job.lastUpdatedAt > 30 * 60 * 1000) {
+        CoastalIntrusionService._jobs.delete(id);
+      }
+    }
+  }
+
+  // Lanza el job en background y devuelve inmediatamente el jobId. El
+  // procesamiento corre fuera del request HTTP (no bloquea ni el response ni
+  // el event loop más allá del trabajo async).
+  runDetectionAsync(reefId?: number): { jobId: string } {
+    CoastalIntrusionService.cleanupOldJobs();
+
+    const jobId = CoastalIntrusionService.newJobId();
+    const job: DetectorJob = {
+      id: jobId,
+      status: 'running',
+      reefId: reefId ?? null,
+      startedAt: new Date(),
+      lastUpdatedAt: Date.now(),
+      progress: { current: 0, total: 0 },
+      perReef: [],
+      result: null,
+      error: null,
+    };
+    CoastalIntrusionService._jobs.set(jobId, job);
+
+    // Fire-and-forget. Los errores se capturan en el catch del .then; el job
+    // queda con status='error' para que el cliente pueda verlo via polling.
+    (async () => {
+      try {
+        const result = await this.runDetection(reefId, (r, current, total) => {
+          job.progress = { current, total };
+          job.perReef.push(r);
+          job.lastUpdatedAt = Date.now();
+        });
+        job.status = 'done';
+        job.result = result;
+        job.lastUpdatedAt = Date.now();
+      } catch (e: any) {
+        job.status = 'error';
+        job.error = e?.message || 'error desconocido';
+        job.lastUpdatedAt = Date.now();
+      }
+    })();
+
+    return { jobId };
+  }
+
+  getDetectionJob(jobId: string) {
+    const job = CoastalIntrusionService._jobs.get(jobId);
+    if (!job) throw new AppError('Job no encontrado o expirado', 404);
+    return {
+      id: job.id,
+      status: job.status,
+      reefId: job.reefId,
+      startedAt: job.startedAt.toISOString(),
+      progress: job.progress,
+      perReef: job.perReef,
+      result: job.result,
+      error: job.error,
+    };
+  }
+
+  listDetectionJobs() {
+    CoastalIntrusionService.cleanupOldJobs();
+    const jobs = Array.from(CoastalIntrusionService._jobs.values())
+      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+      .map((j) => ({
+        id: j.id,
+        status: j.status,
+        reefId: j.reefId,
+        startedAt: j.startedAt.toISOString(),
+        progress: j.progress,
+        finished: j.status !== 'running',
+      }));
+    return { jobs };
   }
 
   async verify(id: number, adminId: string, notes?: string) {

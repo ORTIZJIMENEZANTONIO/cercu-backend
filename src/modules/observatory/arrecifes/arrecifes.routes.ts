@@ -145,6 +145,8 @@ router.get('/arrecifes/news/:id', asyncHandler(c.getReefNews));
 router.get('/arrecifes/admin/coastal-intrusions', scope, auth, asyncHandler(c.listCoastalIntrusions));
 router.get('/arrecifes/admin/coastal-intrusions/:id', scope, auth, asyncHandler(c.getCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/run', scope, auth, asyncHandler(c.runCoastalIntrusionDetection));
+router.get('/arrecifes/admin/coastal-intrusions/jobs', scope, auth, asyncHandler(c.listCoastalIntrusionJobs));
+router.get('/arrecifes/admin/coastal-intrusions/jobs/:jobId', scope, auth, asyncHandler(c.getCoastalIntrusionJob));
 router.post('/arrecifes/admin/coastal-intrusions', scope, auth, asyncHandler(c.createCoastalIntrusion));
 router.delete('/arrecifes/admin/coastal-intrusions/:id', scope, auth, asyncHandler(c.deleteCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/:id/verify', scope, auth, validate(coastalIntrusionVerifySchema), asyncHandler(c.verifyCoastalIntrusion));

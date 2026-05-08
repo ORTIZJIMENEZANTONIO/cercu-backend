@@ -592,6 +592,72 @@ export async function seedObservatoryContent() {
     console.log('  ObsCmsSection (arrecifes): 30 records created');
   }
 
+  // ── CMS Sections (techos-verdes) ──
+  // Migra el copy editorial al CMS para que /admin/contenido lo edite. Los
+  // defaults espejados viven en
+  // `observatorio-techos-verdes/data/cms-defaults.ts`.
+  const techosCmsCount = await cmsRepo.count({ where: { observatory: 'techos-verdes' } });
+  if (techosCmsCount === 0) {
+    await cmsRepo.save(cmsRepo.create([
+      // ── HOME ──
+      { observatory: 'techos-verdes', pageSlug: 'home', sectionKey: 'hero', items: [{ eyebrow: 'CDMX · Infraestructura verde urbana', titleLine1: 'Observatorio de', titleLine2: 'Techos Verdes', subtitle: 'Inventario, priorización y validación de techos verdes en la Ciudad de México. Combina detección satelital, análisis multicriterio (AHP) e inteligencia artificial para identificar las mejores azoteas candidatas.', primaryLabel: 'Explorar el inventario', primaryTo: '/inventario', secondaryLabel: 'Ver metodología', secondaryTo: '/metodologia' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'home', sectionKey: 'features', items: [
+        { icon: 'lucide:map', title: 'Mapa interactivo', description: 'Visualiza techos verdes existentes y candidatos priorizados sobre la cartografía CDMX. Filtra por alcaldía, tipo y nivel de aptitud.', linkLabel: 'Abrir mapa', linkTo: '/mapa', accent: 'primary' },
+        { icon: 'lucide:building-2', title: 'Catálogo de inventario', description: 'Más de 50 techos verdes documentados con superficie, tipo, vegetación, nivel de uso y servicios ecosistémicos provistos.', linkLabel: 'Ver inventario', linkTo: '/inventario', accent: 'eco' },
+        { icon: 'lucide:sparkles', title: 'Validación con IA', description: 'Cada candidato se analiza con Google Gemini Vision para confirmar aptitud, materiales y obstrucciones desde imagen aérea.', linkLabel: 'Ver validaciones', linkTo: '/ia-validacion', accent: 'secondary' },
+      ], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'home', sectionKey: 'cta', items: [{ title: '¿Tu edificio podría tener un techo verde?', description: 'Consulta el catálogo de candidatos priorizados o revisa la metodología AHP para entender cómo evaluamos cada azotea.', primaryLabel: 'Ver candidatos', primaryTo: '/candidatos', secondaryLabel: 'Sobre el observatorio', secondaryTo: '/sobre' }], updatedBy: 'seed' },
+
+      // ── SOBRE ──
+      { observatory: 'techos-verdes', pageSlug: 'sobre', sectionKey: 'hero', items: [{ eyebrow: 'Sobre el observatorio', title: 'Observatorio de Techos Verdes CDMX', subtitle: 'Iniciativa académica del CIIEMAD-IPN que sistematiza el potencial de techos verdes en la Ciudad de México como infraestructura verde urbana.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'sobre', sectionKey: 'mission', items: [{ heading: '¿Por qué un observatorio?', body: 'La CDMX enfrenta isla de calor urbano, inundaciones por escurrimiento, mala calidad del aire y déficit de áreas verdes. Los techos verdes mitigan los cuatro — pero requieren priorizar dónde son técnicamente viables. Este observatorio combina datos OpenStreetMap, análisis multicriterio AHP e IA visual para mapear sistemáticamente el potencial.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'sobre', sectionKey: 'objetivos', items: [
+        { title: 'Detectar', description: 'Identificar azoteas planas con potencial técnico vía OSM (área, rectangularidad, número de niveles).' },
+        { title: 'Priorizar', description: 'Calcular score AHP sobre 8 criterios para identificar los candidatos óptimos.' },
+        { title: 'Validar', description: 'Confirmar aptitud con análisis IA (Gemini Vision) sobre la imagen aérea de cada candidato.' },
+        { title: 'Documentar', description: 'Mantener inventario público de techos verdes existentes con su tipología y servicios ecosistémicos.' },
+      ], updatedBy: 'seed' },
+
+      // ── METODOLOGÍA ──
+      { observatory: 'techos-verdes', pageSlug: 'metodologia', sectionKey: 'hero', items: [{ eyebrow: 'Metodología AHP', title: 'Cómo priorizamos los candidatos', subtitle: 'Analytic Hierarchy Process (Saaty) sobre 8 criterios técnicos: área, rectangularidad, niveles, material, pendiente, obstrucciones, accesibilidad y carga estructural.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'metodologia', sectionKey: 'pasos', items: [
+        { title: 'Detección OSM', description: 'Query Overpass por edificios planos en cada alcaldía CDMX (filtros: building, area > 200m², geom rectangular).' },
+        { title: 'Cálculo AHP', description: 'Normalización 0-1 de los 8 criterios → ponderación por matriz de pesos → score 0-100.' },
+        { title: 'Validación IA', description: 'Imagen aérea del candidato → Gemini 2.0 Flash → clasificación (techo plano sí/no, materiales, obstrucciones).' },
+        { title: 'Revisión humana', description: 'Casos de baja confianza IA pasan a revisión manual por el equipo.' },
+      ], updatedBy: 'seed' },
+
+      // ── PÁGINAS HERO-ONLY ──
+      { observatory: 'techos-verdes', pageSlug: 'indicadores', sectionKey: 'hero', items: [{ eyebrow: 'Indicadores', title: 'Estado actual del observatorio', subtitle: 'Métricas territoriales, distribución AHP, servicios ecosistémicos cuantificados y dinámicas temporales del inventario CDMX.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'inventario', sectionKey: 'hero', items: [{ eyebrow: 'Inventario', title: 'Techos verdes documentados', subtitle: '{count} techos verdes registrados en la Ciudad de México con su tipología, vegetación y servicios ecosistémicos.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'candidatos', sectionKey: 'hero', items: [{ eyebrow: 'Candidatos', title: 'Azoteas priorizadas para techo verde', subtitle: 'Sitios detectados via OpenStreetMap y aprobados como aptos. Ordenados por score AHP — los de mayor puntaje son los mejores candidatos para visita técnica.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'mapa', sectionKey: 'hero', items: [{ eyebrow: 'Mapa interactivo', title: 'Cartografía de techos verdes', subtitle: 'Capas de techos existentes, candidatos priorizados y aptitud por alcaldía sobre OpenStreetMap. Filtros por tipo, score AHP y estado.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'aptitud', sectionKey: 'hero', items: [{ eyebrow: 'Aptitud territorial', title: 'Mapa de aptitud para techos verdes', subtitle: 'Capa raster generada con AHP sobre toda la CDMX: zonas verdes son alta aptitud (≥80), amarillo media (60-79), naranja baja (<60).' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'ia-validacion', sectionKey: 'hero', items: [{ eyebrow: 'IA · Validación visual', title: 'Análisis automatizado con Gemini', subtitle: 'Cada candidato pasa por Gemini 2.0 Flash que evalúa la imagen aérea y devuelve aptitud, materiales, obstrucciones y tipo recomendado.' }], updatedBy: 'seed' },
+
+      // ── FOOTER ──
+      { observatory: 'techos-verdes', pageSlug: 'footer', sectionKey: 'brand', items: [{ title: 'Observatorio de Techos Verdes', subtitle: 'CDMX', description: 'Inventario, priorización y validación de techos verdes en la Ciudad de México. Iniciativa CIIEMAD — Instituto Politécnico Nacional.' }], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'footer', sectionKey: 'sources', items: [
+        { label: 'OpenStreetMap (Overpass API)', href: 'https://overpass-api.de' },
+        { label: 'Google Earth Engine', href: 'https://earthengine.google.com' },
+        { label: 'CONABIO', href: 'http://geoportal.conabio.gob.mx' },
+        { label: 'Sentinel Hub EO Browser', href: 'https://www.sentinel-hub.com/explore/eobrowser/' },
+      ], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'footer', sectionKey: 'quickLinks', items: [
+        { label: 'Mapa', to: '/mapa' },
+        { label: 'Inventario', to: '/inventario' },
+        { label: 'Candidatos', to: '/candidatos' },
+        { label: 'Aptitud territorial', to: '/aptitud' },
+        { label: 'Validación IA', to: '/ia-validacion' },
+        { label: 'Indicadores', to: '/indicadores' },
+        { label: 'Metodología', to: '/metodologia' },
+        { label: 'Sobre', to: '/sobre' },
+      ], updatedBy: 'seed' },
+      { observatory: 'techos-verdes', pageSlug: 'footer', sectionKey: 'institutional', items: [{ body: 'Iniciativa del CIIEMAD — Centro Interdisciplinario de Investigaciones y Estudios sobre Medio Ambiente y Desarrollo, Instituto Politécnico Nacional.', copyright: '© 2026 Observatorio de Techos Verdes CDMX. Plataforma de datos abiertos. Licencia de software Apache 2.0.' }], updatedBy: 'seed' },
+    ]));
+    console.log('  ObsCmsSection (techos-verdes): 18 records created');
+  }
+
   // ── Prospect Submissions ──
   const prospectRepo = AppDataSource.getRepository(ProspectSubmission);
   if ((await prospectRepo.count()) === 0) {

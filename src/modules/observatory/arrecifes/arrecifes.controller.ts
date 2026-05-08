@@ -472,9 +472,24 @@ export class ArrecifesController {
   }
 
   async runCoastalIntrusionDetection(req: Request, res: Response) {
+    // Lanza el job en background y responde inmediatamente con jobId. El
+    // detector tarda hasta 7 min en procesar 12 reefs (Overpass + buffer +
+    // intersect), lo cual rebasa el timeout de proxy nginx (60s default) y
+    // genera 502 Bad Gateway. El cliente hace polling al `getCoastalIntrusionJob`
+    // para ver progreso y resultado final.
     const reefId = req.query.reefId ? Number(req.query.reefId) : undefined;
-    const result = await coastalService.runDetection(reefId);
-    res.json({ success: true, data: result });
+    const { jobId } = coastalService.runDetectionAsync(reefId);
+    res.status(202).json({ success: true, data: { jobId, status: 'running' } });
+  }
+
+  async getCoastalIntrusionJob(req: Request, res: Response) {
+    const job = coastalService.getDetectionJob(req.params.jobId);
+    res.json({ success: true, data: job });
+  }
+
+  async listCoastalIntrusionJobs(_req: Request, res: Response) {
+    const result = coastalService.listDetectionJobs();
+    res.json({ success: true, ...result });
   }
 
   // Caso manual: el revisor tiene una invasión documentada que el detector OSM
