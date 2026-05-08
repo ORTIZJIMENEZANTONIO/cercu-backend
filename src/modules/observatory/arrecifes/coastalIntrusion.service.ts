@@ -110,9 +110,13 @@ const generateZofematBuffer = async (
   if (elements.length === 0) return null;
 
   // Cada elemento `way` con geometry es una serie de coordenadas. Las
-  // convertimos a LineString y aplicamos buffer.
+  // convertimos a LineString y aplicamos buffer. Cedemos el event loop cada
+  // 10 buffers para no bloquear el HTTP server (turf.buffer es síncrono).
+  const yieldEventLoop = () => new Promise<void>((res) => setImmediate(res));
   const buffered: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>[] = [];
-  for (const el of elements) {
+  for (let i = 0; i < elements.length; i++) {
+    if (i > 0 && i % 10 === 0) await yieldEventLoop();
+    const el = elements[i];
     if (!el.geometry || el.geometry.length < 2) continue;
     const coords = el.geometry.map((p) => [p.lon, p.lat]);
     const line = turf.lineString(coords);
@@ -128,9 +132,12 @@ const generateZofematBuffer = async (
   if (buffered.length === 0) return null;
   if (buffered.length === 1) return buffered[0];
 
-  // Unión progresiva de los buffers — Turf union acepta de a 2.
+  // Unión progresiva de los buffers — Turf union acepta de a 2. Igual cedemos
+  // el event loop cada 5 uniones (turf.union es la op más cara con polígonos
+  // multi-segmento como costas largas).
   let merged = buffered[0];
   for (let i = 1; i < buffered.length; i++) {
+    if (i > 1 && i % 5 === 0) await yieldEventLoop();
     try {
       const u = turf.union(
         turf.featureCollection([merged, buffered[i]]) as any,
@@ -192,7 +199,7 @@ interface DetectorJob {
   reefId: number | null;
   startedAt: Date;
   lastUpdatedAt: number;
-  progress: { current: number; total: number };
+  progress: { current: number; total: number; currentReefName?: string | null };
   perReef: DetectionResult[];
   result: DetectionRunSummary | null;
   error: string | null;
@@ -228,7 +235,21 @@ export const detectIntrusionsForReef = async (
 
   const detectedAt = new Date();
 
-  for (const el of elements) {
+  // Helper: cede el event loop. Sin esto, el bucle de turf.intersect/area
+  // sobre miles de polígonos es 100% síncrono y bloquea Node por minutos —
+  // ninguna otra HTTP request puede responder mientras corre. Nginx mata
+  // entonces los GET /jobs/:jobId con 502 Bad Gateway.
+  //
+  // setImmediate libera el event loop después de cada lote para que el HTTP
+  // server pueda atender requests entrantes. Costo: ~0 si nada espera; si hay
+  // pending IO/timers, se procesan antes de la siguiente iteración.
+  const yieldEventLoop = () => new Promise<void>((res) => setImmediate(res));
+  const YIELD_EVERY = 25; // cede cada 25 edificios procesados
+
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (i > 0 && i % YIELD_EVERY === 0) await yieldEventLoop();
+
     const poly = buildingToPolygon(el);
     if (!poly) {
       result.skipped++;
@@ -349,11 +370,14 @@ export class CoastalIntrusionService {
   // CLI / cron, pero el endpoint HTTP usa `runDetectionAsync` para evitar
   // timeouts del proxy nginx. Secuencial con delay para no saturar Overpass.
   //
-  // `onProgress` se invoca después de cada reef con el resultado parcial —
-  // útil para que la UI vea progreso en tiempo real vía el job manager.
+  // Callbacks:
+  //   - `onReefStart(reef, idx, total)` se invoca ANTES de empezar cada reef.
+  //     Útil para mostrar "procesando X" en la UI mientras tarda Overpass.
+  //   - `onReefDone(result, idx, total)` se invoca DESPUÉS con el resultado.
   async runDetection(
     reefId?: number,
-    onProgress?: (result: DetectionResult, idx: number, total: number) => void,
+    onReefDone?: (result: DetectionResult, idx: number, total: number) => void,
+    onReefStart?: (reef: ObsReef, idx: number, total: number) => void,
   ) {
     const reefs = reefId
       ? [await reefRepo().findOne({ where: { id: reefId } })].filter(Boolean) as ObsReef[]
@@ -364,6 +388,7 @@ export class CoastalIntrusionService {
     const results: DetectionResult[] = [];
     for (let i = 0; i < reefs.length; i++) {
       const reef = reefs[i];
+      onReefStart?.(reef, i, reefs.length);
       let result: DetectionResult;
       try {
         result = await detectIntrusionsForReef(reef);
@@ -380,7 +405,7 @@ export class CoastalIntrusionService {
         };
       }
       results.push(result);
-      onProgress?.(result, i + 1, reefs.length);
+      onReefDone?.(result, i + 1, reefs.length);
 
       // Throttle suave: Overpass agradece <0.5 req/s sostenido
       await new Promise((res) => setTimeout(res, 1500));
@@ -465,13 +490,24 @@ export class CoastalIntrusionService {
     // queda con status='error' para que el cliente pueda verlo via polling.
     (async () => {
       try {
-        const result = await this.runDetection(reefId, (r, current, total) => {
-          job.progress = { current, total };
-          job.perReef.push(r);
-          job.lastUpdatedAt = Date.now();
-        });
+        const result = await this.runDetection(
+          reefId,
+          (r, current, total) => {
+            job.progress = { current, total, currentReefName: null };
+            job.perReef.push(r);
+            job.lastUpdatedAt = Date.now();
+          },
+          (reef, idx, total) => {
+            // Empezamos a procesar `reef` — notifica al cliente para que el
+            // progress bar muestre el nombre actual y no quede mudo durante
+            // los 30s de Overpass + buffer.
+            job.progress = { current: idx, total, currentReefName: reef.name };
+            job.lastUpdatedAt = Date.now();
+          },
+        );
         job.status = 'done';
         job.result = result;
+        job.progress = { current: result.reefsProcessed, total: result.reefsProcessed, currentReefName: null };
         job.lastUpdatedAt = Date.now();
       } catch (e: any) {
         job.status = 'error';
