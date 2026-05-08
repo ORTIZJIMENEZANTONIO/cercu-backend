@@ -30,6 +30,12 @@ import observatoryEventsRoutes from './modules/observatory/events/events.routes'
 export function createApp() {
   const app = express();
 
+  // Confiamos en el primer hop (nginx) para X-Forwarded-For / X-Forwarded-Proto.
+  // Sin esto, express-rate-limit lanza ValidationError porque ve la IP interna
+  // 127.0.0.1 en cada request, y los logs se llenan de avisos. Valor `1` =
+  // confiar en un solo proxy (que es nuestro caso: nginx local en el VPS).
+  app.set('trust proxy', 1);
+
   app.use(helmet());
   app.use(cors({ origin: config.cors.origin, credentials: true }));
   app.use(express.json({ limit: '10mb' }));
