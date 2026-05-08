@@ -50,6 +50,23 @@ export class ObsTier {
   @Column({ type: 'boolean', default: false })
   archived!: boolean;
 
+  // ── Campos del "modo de participación" (visibles en /contributors) ──
+  // El reframe del tier system: cada escala se presenta como un MODO
+  // distinto de aportar (no un nivel a alcanzar). Estos cuatro campos viven
+  // en BD para que el admin los edite desde /admin/tiers sin tocar código.
+  // Caen al `label`/`description` legacy cuando no están poblados.
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  modeTitle!: string | null;       // ej. "Curiosidad ciudadana"
+
+  @Column({ type: 'text', nullable: true })
+  audience!: string | null;        // quién aporta así
+
+  @Column({ type: 'json', nullable: true })
+  contributions!: string[] | null; // lista de aportes típicos (3-5 items)
+
+  @Column({ type: 'text', nullable: true })
+  bridge!: string | null;          // cómo se conecta con los otros modos
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -11,6 +11,8 @@ import { ObsTier } from '../../../entities/observatory/Tier';
 import { ObsReefMetricSnapshot } from '../../../entities/observatory/ReefMetricSnapshot';
 import { ObsReefNews } from '../../../entities/observatory/ReefNews';
 import { ObsReefNewsProspect } from '../../../entities/observatory/ReefNewsProspect';
+import { ObsCoastalIntrusion } from '../../../entities/observatory/CoastalIntrusion';
+import { ObsCmsSection } from '../../../entities/observatory/CmsSection';
 import { AppError } from '../../../middleware/errorHandler.middleware';
 import { fetchReefClimate } from './nasaPower.service';
 import { computeCoralHealthIndex } from './coralHealthIndex';
@@ -26,6 +28,8 @@ const tierRepo = () => AppDataSource.getRepository(ObsTier);
 const snapshotRepo = () => AppDataSource.getRepository(ObsReefMetricSnapshot);
 const reefNewsRepo = () => AppDataSource.getRepository(ObsReefNews);
 const reefNewsProspectRepo = () => AppDataSource.getRepository(ObsReefNewsProspect);
+const intrusionRepoForSummary = () => AppDataSource.getRepository(ObsCoastalIntrusion);
+const cmsRepoForSummary = () => AppDataSource.getRepository(ObsCmsSection);
 
 const UPLOADS_ROOT = path.join(__dirname, '../../../../uploads');
 
@@ -47,6 +51,9 @@ export class ArrecifesService {
         .andWhere(`(${alias}.archived IS NULL OR ${alias}.archived = :arch)`, { arch: false })
         .getCount();
 
+    const n = (v: unknown) => Number(v) || 0;
+
+    // ── Counts crudos paralelizados ──
     const [
       reefsTotal,
       reefsPublic,
@@ -54,6 +61,18 @@ export class ArrecifesService {
       conflictsPublic,
       contributorsTotal,
       contributorsPublic,
+      layersTotal,
+      layersPublic,
+      tiersTotal,
+      newsTotal,
+      newsPublic,
+      newsProspectsTotal,
+      newsProspectsPending,
+      snapshotsTotal,
+      latestSnapshot,
+      latestAlert,
+      cmsSectionsCount,
+      verifiedContributors,
     ] = await Promise.all([
       reefRepo().count(),
       publicCount(ObsReef, 'r'),
@@ -61,20 +80,33 @@ export class ArrecifesService {
       publicCount(ObsConflict, 'c'),
       contributorRepo().count(),
       publicCount(ObsContributor, 'c'),
+      layerRepo().count(),
+      publicCount(ObsLayer, 'l'),
+      tierRepo().count(),
+      reefNewsRepo().count(),
+      publicCount(ObsReefNews, 'n'),
+      reefNewsProspectRepo().count(),
+      reefNewsProspectRepo().count({ where: { status: 'pending' as any } } as any).catch(() => 0),
+      snapshotRepo().count(),
+      snapshotRepo().findOne({ where: {}, order: { capturedAt: 'DESC' } }).catch(() => null),
+      alertRepo().findOne({ where: {}, order: { observedAt: 'DESC' } }).catch(() => null),
+      cmsRepoForSummary().count({ where: { observatory: 'arrecifes' } }),
+      contributorRepo().count({ where: { verified: true } }),
     ]);
 
+    // ── Observaciones por estado ──
     const observationsByStatus = await observationRepo()
       .createQueryBuilder('o')
       .select('o.status', 'status')
       .addSelect('COUNT(*)', 'count')
       .groupBy('o.status')
       .getRawMany();
-
     const obs = { pending: 0, in_review: 0, validated: 0, rejected: 0, needs_more_info: 0 };
     for (const row of observationsByStatus) {
       (obs as any)[row.status] = Number(row.count);
     }
 
+    // ── Arrecifes por estatus ──
     const reefsByStatusRows = await reefRepo()
       .createQueryBuilder('r')
       .select('r.status', 'status')
@@ -82,7 +114,65 @@ export class ArrecifesService {
       .groupBy('r.status')
       .getRawMany();
 
-    const n = (v: unknown) => Number(v) || 0;
+    // ── Alertas: agregadas por nivel + count de "críticas" (DHW≥4) ──
+    const alertsByLevel = await alertRepo()
+      .createQueryBuilder('a')
+      .select('a.level', 'level')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('a.level')
+      .getRawMany();
+    const alertsByLevelMap: Record<string, number> = {
+      no_stress: 0, watch: 0, warning: 0, alert_1: 0, alert_2: 0,
+    };
+    for (const row of alertsByLevel) alertsByLevelMap[row.level] = Number(row.count);
+
+    const criticalAlerts = await alertRepo()
+      .createQueryBuilder('a')
+      .where('a.dhw >= :dhw', { dhw: 4 })
+      .getCount();
+
+    // ── Coastal intrusions por status ──
+    const intrusionsByStatus = await intrusionRepoForSummary()
+      .createQueryBuilder('i')
+      .select('i.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('i.status')
+      .getRawMany();
+    const intrusionsMap: Record<string, number> = {
+      candidate: 0, verified: 0, escalated: 0, dismissed: 0,
+    };
+    for (const row of intrusionsByStatus) intrusionsMap[row.status] = Number(row.count);
+
+    // ── Layers por kind ──
+    const layersByKindRows = await layerRepo()
+      .createQueryBuilder('l')
+      .select('l.kind', 'kind')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('l.kind')
+      .getRawMany();
+    const layersByKind = { external_url: 0, uploaded_file: 0 };
+    for (const row of layersByKindRows) {
+      const k = row.kind || 'external_url';
+      (layersByKind as any)[k] = Number(row.count);
+    }
+
+    // ── Climate coverage: cuántos reefs tienen `climateData` ya cacheada ──
+    const reefsWithClimate = await reefRepo()
+      .createQueryBuilder('r')
+      .where('r.climateData IS NOT NULL')
+      .getCount();
+
+    // ── Contribuidores por tier (top tiers ya con miembros) ──
+    const contributorsByTier = await contributorRepo()
+      .createQueryBuilder('c')
+      .select('c.tier', 'tier')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('c.tier')
+      .getRawMany();
+    const contributorsByTierMap: Record<string, number> = {};
+    for (const row of contributorsByTier) {
+      contributorsByTierMap[row.tier] = Number(row.count);
+    }
 
     return {
       observatory: 'arrecifes',
@@ -90,17 +180,43 @@ export class ArrecifesService {
         reefs: n(reefsPublic),
         conflicts: n(conflictsPublic),
         contributors: n(contributorsPublic),
+        layers: n(layersPublic),
+        news: n(newsPublic),
       },
       totals: {
         reefs: n(reefsTotal),
         conflicts: n(conflictsTotal),
         contributors: n(contributorsTotal),
+        layers: n(layersTotal),
+        tiers: n(tiersTotal),
+        news: n(newsTotal),
+        cmsSections: n(cmsSectionsCount),
+        snapshots: n(snapshotsTotal),
       },
       observations: obs,
       reefsByStatus: reefsByStatusRows.reduce(
         (acc: any, r: any) => ({ ...acc, [r.status]: Number(r.count) }),
         {},
       ),
+      contributorsByTier: contributorsByTierMap,
+      contributorsVerified: n(verifiedContributors),
+      alertsByLevel: alertsByLevelMap,
+      alertsCritical: n(criticalAlerts),
+      latestAlertAt: latestAlert ? (latestAlert.observedAt as Date).toISOString() : null,
+      coastalIntrusions: intrusionsMap,
+      layersByKind,
+      newsProspects: {
+        total: n(newsProspectsTotal),
+        pending: n(newsProspectsPending),
+      },
+      snapshots: {
+        total: n(snapshotsTotal),
+        lastCapturedAt: latestSnapshot ? String(latestSnapshot.capturedAt) : null,
+      },
+      climate: {
+        reefsWithData: n(reefsWithClimate),
+        reefsTotal: n(reefsTotal),
+      },
     };
   }
 
@@ -242,6 +358,16 @@ export class ArrecifesService {
     }
 
     return { count: rows.length, capturedAt: today, source };
+  }
+
+  // Borra un snapshot puntual — útil para limpiar capturas erróneas o
+  // duplicadas que slipped past el upsert por `(reefId, capturedAt)` (ej. si
+  // se editó la fecha en BD y dejaron de coincidir).
+  async deleteReefSnapshot(id: number) {
+    const r = await snapshotRepo().findOne({ where: { id } });
+    if (!r) throw new AppError('Snapshot no encontrado', 404);
+    await snapshotRepo().remove(r);
+    return { deleted: true };
   }
 
   // Serie de tiempo de un solo arrecife. `days` opcional limita la ventana.
@@ -408,6 +534,31 @@ export class ArrecifesService {
     return observationRepo().save(obs);
   }
 
+  // Versión admin: el reviewer crea un aporte directamente (típicamente para
+  // backfill/migración). Acepta un `status` opcional (default 'validated') —
+  // si lo dejamos en validated también se sincroniza el contador del arrecife
+  // como cualquier otra revisión positiva, así el aporte aparece público al
+  // instante.
+  async createObservationAdmin(data: any, reviewerId: string) {
+    const status = data.status || 'validated';
+    const payload: any = {
+      ...data,
+      status,
+      submittedAt: new Date(),
+      capturedAt: data.capturedAt ? new Date(data.capturedAt) : new Date(),
+    };
+    if (status === 'validated') {
+      payload.reviewerId = reviewerId;
+      payload.validatedAt = new Date();
+    }
+    const saved = await observationRepo().save(observationRepo().create(payload));
+
+    if (status === 'validated' && data.reefId) {
+      await reefRepo().increment({ id: data.reefId }, 'observations', 1);
+    }
+    return saved;
+  }
+
   async reviewObservation(
     id: number,
     reviewerId: string,
@@ -442,6 +593,34 @@ export class ArrecifesService {
     }
 
     return saved;
+  }
+
+  // Edición de metadatos por admin/reviewer — no toca el flujo de estado/quality
+  // (sigue siendo dominio exclusivo de `reviewObservation`). Útil para corregir
+  // typos, coordenadas, fecha de captura, tags o el reefId asociado sin obligar
+  // al ciudadano a re-enviar.
+  async updateObservation(id: number, data: any) {
+    const r = await this.getObservation(id);
+
+    const editableFields = [
+      'title',
+      'description',
+      'lat',
+      'lng',
+      'capturedAt',
+      'reefId',
+      'type',
+      'tags',
+      'attachments',
+      'visible',
+      'archived',
+    ] as const;
+    for (const field of editableFields) {
+      if (data[field] !== undefined) {
+        (r as any)[field] = data[field];
+      }
+    }
+    return observationRepo().save(r);
   }
 
   async deleteObservation(id: number) {
@@ -491,6 +670,72 @@ export class ArrecifesService {
       await reefRepo().save(reef);
     }
     return saved;
+  }
+
+  // Edita campos de una alerta sin tocar el arrecife asociado. Si el caller
+  // cambia el `level`, sincronizamos también el `bleachingAlert` del reef
+  // (mismo mapeo que `createAlert`).
+  async updateAlert(id: number, data: any) {
+    const alert = await alertRepo().findOne({ where: { id } });
+    if (!alert) throw new AppError('Alerta no encontrada', 404);
+
+    const editable = ['level', 'dhw', 'sst', 'sstAnomaly', 'observedAt', 'source', 'productUrl'] as const;
+    for (const f of editable) {
+      if (data[f] !== undefined) {
+        if (f === 'observedAt') {
+          (alert as any)[f] = new Date(data[f]);
+        } else {
+          (alert as any)[f] = data[f];
+        }
+      }
+    }
+    const saved = await alertRepo().save(alert);
+
+    if (data.level !== undefined) {
+      const reef = await reefRepo().findOne({ where: { id: alert.reefId } });
+      if (reef) {
+        reef.bleachingAlert = data.level;
+        if (data.level === 'alert_2') reef.status = 'mortality' as any;
+        else if (data.level === 'alert_1') reef.status = 'bleaching' as any;
+        else if (data.level === 'warning') reef.status = 'warning' as any;
+        else if (data.level === 'watch') reef.status = 'watch' as any;
+        else reef.status = 'healthy' as any;
+        await reefRepo().save(reef);
+      }
+    }
+    return saved;
+  }
+
+  // Borra una alerta. Después recalcula el `bleachingAlert` del arrecife usando
+  // la siguiente alerta más reciente (o lo limpia si era la única).
+  async deleteAlert(id: number) {
+    const alert = await alertRepo().findOne({ where: { id } });
+    if (!alert) throw new AppError('Alerta no encontrada', 404);
+    const reefId = alert.reefId;
+    await alertRepo().remove(alert);
+
+    if (reefId) {
+      const next = await alertRepo().findOne({
+        where: { reefId },
+        order: { observedAt: 'DESC' },
+      });
+      const reef = await reefRepo().findOne({ where: { id: reefId } });
+      if (reef) {
+        if (next) {
+          reef.bleachingAlert = next.level as any;
+          if (next.level === 'alert_2') reef.status = 'mortality' as any;
+          else if (next.level === 'alert_1') reef.status = 'bleaching' as any;
+          else if (next.level === 'warning') reef.status = 'warning' as any;
+          else if (next.level === 'watch') reef.status = 'watch' as any;
+          else reef.status = 'healthy' as any;
+        } else {
+          reef.bleachingAlert = null;
+          reef.status = 'healthy' as any;
+        }
+        await reefRepo().save(reef);
+      }
+    }
+    return { deleted: true };
   }
 
   // ──────────────────────────── Layers ────────────────────────────

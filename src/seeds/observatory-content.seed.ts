@@ -454,11 +454,13 @@ export async function seedObservatoryContent() {
     console.log('  ObsProspectoNoticia: 1 record created');
   }
 
-  // ── CMS Sections ──
+  // ── CMS Sections (humedales) ──
   const cmsRepo = AppDataSource.getRepository(ObsCmsSection);
-  if ((await cmsRepo.count()) === 0) {
+  const humedalesCmsCount = await cmsRepo.count({ where: { observatory: 'humedales' } });
+  if (humedalesCmsCount === 0) {
     await cmsRepo.save(cmsRepo.create([
       {
+        observatory: 'humedales',
         pageSlug: 'home',
         sectionKey: 'features',
         items: [
@@ -469,6 +471,7 @@ export async function seedObservatoryContent() {
         updatedBy: 'seed',
       },
       {
+        observatory: 'humedales',
         pageSlug: 'home',
         sectionKey: 'tipologias',
         items: [
@@ -479,6 +482,7 @@ export async function seedObservatoryContent() {
         updatedBy: 'seed',
       },
       {
+        observatory: 'humedales',
         pageSlug: 'sobre',
         sectionKey: 'criterios',
         items: [
@@ -492,7 +496,100 @@ export async function seedObservatoryContent() {
         updatedBy: 'seed',
       },
     ]));
-    console.log('  ObsCmsSection: 3 records created');
+    console.log('  ObsCmsSection (humedales): 3 records created');
+  }
+
+  // ── CMS Sections (arrecifes) ──
+  // Migra el copy hardcodeado de los .vue al CMS para que /admin/contenido lo
+  // pueda editar. Cada bloque nuevo aquí debe espejar la estructura del default
+  // en `observatorio-arrecifes/data/cms-defaults.ts`.
+  const arrecifesCmsCount = await cmsRepo.count({ where: { observatory: 'arrecifes' } });
+  if (arrecifesCmsCount === 0) {
+    await cmsRepo.save(cmsRepo.create([
+      // ── HOME ──
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'hero', items: [{ eyebrow: 'Datos en tiempo casi real · NOAA · NASA · ESA', titleLine1: 'Observatorio', titleLine2Prefix: 'de', titleLine2Highlight: 'Arrecifes Vivos', titleLine3: 'de México', subtitle: 'Una plataforma viva. Mapas satelitales actualizados a diario, capas abiertas descargables y una red verificada de pescadores, buzos, comunidades costeras y científicos que documentan lo que pasa bajo el agua.', primaryLabel: 'Abrir mapa vivo', primaryTo: '/livemap', secondaryLabel: 'Contribuir', secondaryTo: '/contribute' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'features', items: [
+        { icon: 'lucide:satellite', title: 'Datos satelitales casi en tiempo real', description: 'NOAA Coral Reef Watch (DHW, alertas de blanqueamiento), NASA MODIS/PACE (SST, clorofila), ESA Sentinel-2 (10 m), USGS Landsat. Reproyectados sobre la línea costera mexicana.', linkLabel: 'Abrir mapa', linkTo: '/livemap', accent: 'primary' },
+        { icon: 'lucide:alert-triangle', title: 'Atlas de conflictos socioambientales', description: 'Quién impulsa, quién resiste, qué especies se afectan. Casos documentados de cruceros, sargazo, derrames, sobrepesca y desarrollo costero — con evidencia.', linkLabel: 'Ver atlas', linkTo: '/atlas', accent: 'coral' },
+        { icon: 'lucide:users', title: 'Red verificada de colaboradores', description: 'Pescadores, buzos, investigadoras, comunidades costeras. Sistema de reputación tipo marketplace: bronce → coral según aportes validados, calidad y consistencia.', linkLabel: 'Ver red', linkTo: '/contributors', accent: 'eco' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'sectionTitle', items: [{ eyebrow: '¿Qué hay aquí?', title: 'Una plataforma viva, no un reporte estático', subtitle: 'Inspirada en Allen Coral Atlas (mapas satelitales globales) y EJAtlas (cartografía de conflictos socioambientales). Pensada para México, en español y desde lo costero.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'alerts', items: [{ eyebrow: 'Últimas 72 h', title: 'Alertas activas', subtitle: 'NOAA Coral Reef Watch · 5 km · actualizado diariamente.', linkLabel: 'Ver mapa de alertas', linkTo: '/livemap?layer=noaa-crw-bleaching-alert' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'contributorsTeaser', items: [{ eyebrow: 'Comunidad', title: 'Top colaboradores', subtitle: 'Reputación basada en aportes validados, calidad y consistencia.', linkLabel: 'Ver todos', linkTo: '/contributors' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'home', sectionKey: 'cta', items: [{ title: '¿Vives, buceas o investigas en la costa?', description: 'Sumate a la red. Aporta fotos, vuelos de dron, transectos o reportes de problemáticas. Un equipo revisa cada aporte y construyes tu reputación con cada validación.', primaryLabel: 'Contribuir', primaryTo: '/contribute', secondaryLabel: 'Cómo funciona', secondaryTo: '/about' }], updatedBy: 'seed' },
+
+      // ── ABOUT ──
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'hero', items: [{ eyebrow: 'Sobre el observatorio', title: 'Una plataforma viva, abierta y verificada', subtitle: 'Herramienta de monitoreo y memoria de los arrecifes coralinos de México. Combina satélites, datos abiertos y el conocimiento de quienes habitan la costa.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'mission', items: [{ heading: '¿Por qué existe?', body: 'Los arrecifes coralinos mexicanos enfrentan presiones simultáneas: estrés térmico, blanqueamiento, sargazo, desarrollo costero, sobrepesca, derrames y enfermedades como SCTLD. La información existe pero está fragmentada entre dependencias, universidades y sensores satelitales. Este observatorio reúne esa información en un solo lugar y la pone al servicio de comunidades, tomadores de decisión y la ciudadanía.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'inspirations', items: [
+        { title: 'Allen Coral Atlas', description: 'Mapas globales de hábitat bentónico a 5 m con monitoreo de blanqueamiento.' },
+        { title: 'EJAtlas', description: 'Cartografía global de conflictos socioambientales con perspectiva de justicia ambiental.' },
+        { title: 'NOAA Coral Reef Watch', description: 'Alertas operacionales de estrés térmico.' },
+        { title: 'CONABIO Geoportal', description: 'Capas oficiales de México (ANP, arrecifes coralinos).' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'sources', items: [
+        { title: 'Datos satelitales operacionales', description: 'NOAA CRW, NASA OB.DAAC, ESA Copernicus, USGS.' },
+        { title: 'Bases académicas indexadas', description: 'Web of Science, Scopus, SciELO, Redalyc.' },
+        { title: 'Fuentes institucionales mexicanas', description: 'CONANP, CONABIO, INEGI, SEMARNAT.' },
+        { title: 'Aportes de la red', description: 'Validados por revisores con perfil verificado.' },
+        { title: 'Prensa y comunicados', description: 'Solo como complemento, nunca como fuente primaria.' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'reputationIntro', items: [{ heading: 'Sistema de reputación', body: 'Inspirado en plataformas como Mercado Libre o Rappi: tu rango sube con cada aporte validado, ponderando calidad y consistencia, no solo volumen.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'validation', items: [
+        { title: 'Envío con metadatos', description: 'El aporte se envía con metadatos (ubicación, fecha, tipo, adjuntos).' },
+        { title: 'Evaluación', description: 'Un revisor con permiso review_submissions lo evalúa: ubicación coherente, metadata consistente, calidad técnica.' },
+        { title: 'Calidad 0–100', description: 'El revisor asigna calidad 0–100 y publica/rechaza con notas.' },
+        { title: 'Iteración', description: 'Si la rechaza, el autor puede corregir y reenviar.' },
+        { title: 'Publicación', description: 'Una vez validado, el aporte aparece público con crédito y suma puntos al autor.' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'licenses', items: [{ heading: 'Licencias y atribución', body: 'Cada capa preserva su licencia original. Los datos NOAA y NASA son de dominio público; ESA Copernicus se redistribuye bajo Copernicus Open Data; Allen Coral Atlas y CONABIO requieren atribución (CC BY 4.0); Global Fishing Watch CC BY-NC 4.0. El código del observatorio se libera bajo Apache 2.0.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'about', sectionKey: 'contact', items: [{ heading: 'Contacto', body: 'Escríbenos para sumarte como institución, ONG, cooperativa pesquera o universidad. Los aportes individuales pasan por la página de contribuir.' }], updatedBy: 'seed' },
+
+      // ── CONTRIBUTE ──
+      { observatory: 'arrecifes', pageSlug: 'contribute', sectionKey: 'hero', items: [{ eyebrow: 'Contribuir', title: 'Aporta a la plataforma', subtitle: 'Comparte fotos submarinas, vuelos de dron, transectos, muestras o reportes de problemáticas costeras. Un equipo revisa cada aporte; al validarse construyes tu reputación.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'contribute', sectionKey: 'sidebar', items: [
+        { title: '¿Por qué validamos?', body: 'Los datos que afectan políticas públicas y comunidades costeras requieren rigor. La validación protege a la red y a quienes consultan los datos.' },
+        { title: 'Buenas prácticas', body: 'Incluye metadata de cámara/dron (EXIF). Documenta la metodología (transecto, profundidad). Evita imágenes con localización precisa de fauna sensible. Cita la fuente si es de un satélite (NASA, ESA, etc.).' },
+        { title: 'Privacidad', body: 'Para reportes de conflictos puedes solicitar anonimato. Tu aporte se publica con la indicación "Anónimo verificado".' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'contribute', sectionKey: 'notice', items: [{ body: 'Tu aporte entrará en cola de revisión. Un revisor del equipo verifica metadatos, ubicación y calidad. Cuando se valida, tu reputación sube y el aporte aparece público con tu crédito.' }], updatedBy: 'seed' },
+
+      // ── PÁGINAS HERO-ONLY ──
+      { observatory: 'arrecifes', pageSlug: 'inventory', sectionKey: 'hero', items: [{ eyebrow: 'Inventario', title: 'Arrecifes monitoreados', subtitle: '{count} arrecifes coralinos documentados en el Pacífico, Golfo de México y Caribe mexicano. Datos consolidados de CONANP, CONABIO, Allen Coral Atlas y literatura académica.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'atlas', sectionKey: 'hero', items: [{ eyebrow: 'Atlas', title: 'Conflictos socioambientales costeros', subtitle: 'Inspirado en EJAtlas. Cada caso documenta quién impulsa la presión, quién resiste, qué arrecifes y comunidades se afectan. Evidencia abierta y verificable.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'data-sources', sectionKey: 'hero', items: [{ eyebrow: 'Capas y datos', title: 'Datos abiertos. Atribución obligatoria.', subtitle: 'Catálogo de capas satelitales y geoespaciales. Cada capa conserva su licencia y cita original. Descarga libre con crédito a la fuente.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'noticias', sectionKey: 'hero', items: [{ eyebrow: 'Editorial', title: 'Noticias del observatorio', subtitle: 'Análisis, recopilación de prensa y notas de campo sobre arrecifes mexicanos. Cada nota cita su fuente original.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'observations', sectionKey: 'hero', items: [{ eyebrow: 'Aportes de la red', title: 'Observaciones recientes', subtitle: 'Fotografías submarinas, vuelos de dron, transectos, muestreos y reportes ciudadanos. Cada aporte se etiqueta con su estado de validación y crédito al autor.' }], updatedBy: 'seed' },
+
+      // ── CONTRIBUTORS ──
+      { observatory: 'arrecifes', pageSlug: 'contributors', sectionKey: 'hero', items: [{ eyebrow: 'Red de colaboradores', title: 'Quienes alimentan la plataforma', subtitle: 'Pescadores, buzos, investigadoras, comunidades costeras. Sistema de reputación inspirado en marketplaces: tu rango sube con cada aporte validado.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'contributors', sectionKey: 'modesIntro', items: [{ eyebrow: 'Cinco maneras de aportar', title: '5 maneras de cuidar el mismo arrecife', subtitle: 'No es una escalera. Es una red horizontal: cada modo aporta saber distinto al monitoreo. Nadie reemplaza a nadie — se complementan.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'contributors', sectionKey: 'networkCallout', items: [{ heading: 'Red, no escalera', body: 'Los modos no son niveles que se escalan. Son maneras distintas de aportar al mismo objetivo: cuidar los arrecifes mexicanos. Tu modo se asigna automáticamente según tu trayectoria — y no hay un "modo mejor" que otro.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'contributors', sectionKey: 'cta', items: [{ title: '¿Quieres formar parte de la red?', description: 'Si vives, pescas, buceas o investigas en la costa mexicana, tu observación cuenta. Suma tu aporte y crece junto a la red.', primaryLabel: 'Cómo participar', primaryTo: '/contribute', secondaryLabel: 'Sobre el observatorio', secondaryTo: '/about' }], updatedBy: 'seed' },
+
+      // ── FOOTER ──
+      { observatory: 'arrecifes', pageSlug: 'footer', sectionKey: 'brand', items: [{ title: 'Observatorio de Arrecifes', subtitle: 'México · Vivo', description: 'Plataforma viva de monitoreo de arrecifes coralinos de México. Datos satelitales abiertos de NASA, NOAA, ESA Copernicus y CONABIO. Conocimiento ciudadano y científico validado.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'footer', sectionKey: 'attribution', items: [{ eyebrow: 'Atribución obligatoria', body: 'Todas las capas descargables conservan su licencia y atribución original. Ver la sección de capas y datos para citas.' }], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'footer', sectionKey: 'sources', items: [
+        { label: 'NOAA Coral Reef Watch', href: 'https://coralreefwatch.noaa.gov' },
+        { label: 'NASA OB.DAAC', href: 'https://oceancolor.gsfc.nasa.gov' },
+        { label: 'ESA Copernicus', href: 'https://dataspace.copernicus.eu' },
+        { label: 'CONABIO Geoportal', href: 'http://geoportal.conabio.gob.mx' },
+        { label: 'Allen Coral Atlas', href: 'https://allencoralatlas.org' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'footer', sectionKey: 'quickLinks', items: [
+        { label: 'Mapa vivo', to: '/livemap' },
+        { label: 'Arrecifes', to: '/inventory' },
+        { label: 'Atlas de conflictos', to: '/atlas' },
+        { label: 'Capas y datos abiertos', to: '/data-sources' },
+        { label: 'Comunidad', to: '/contributors' },
+        { label: 'Observaciones recientes', to: '/observations' },
+        { label: 'Contribuir', to: '/contribute' },
+        { label: 'Sobre el observatorio', to: '/about' },
+      ], updatedBy: 'seed' },
+      { observatory: 'arrecifes', pageSlug: 'footer', sectionKey: 'institutional', items: [{ body: 'Iniciativa del CIIEMAD — Centro Interdisciplinario de Investigaciones y Estudios sobre Medio Ambiente y Desarrollo, Instituto Politécnico Nacional.', copyright: '© 2026 Observatorio de Arrecifes — México. Plataforma de datos abiertos. Licencia de software Apache 2.0.' }], updatedBy: 'seed' },
+    ]));
+    console.log('  ObsCmsSection (arrecifes): 30 records created');
   }
 
   // ── Prospect Submissions ──

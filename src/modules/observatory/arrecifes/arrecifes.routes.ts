@@ -48,6 +48,7 @@ router.post('/arrecifes/admin/reefs/:id/refresh-climate', scope, auth, asyncHand
 
 // ── Snapshots / serie de tiempo (admin trigger + lecturas públicas) ──
 router.post('/arrecifes/admin/reefs/snapshot', scope, auth, asyncHandler(c.snapshotAllReefs));
+router.delete('/arrecifes/admin/reefs/snapshots/:id', scope, auth, asyncHandler(c.deleteReefSnapshot));
 router.get('/arrecifes/reefs/metrics', asyncHandler(c.listAllReefMetrics));
 router.get('/arrecifes/reefs/:id/metrics', asyncHandler(c.listReefMetrics));
 
@@ -78,7 +79,9 @@ router.get('/arrecifes/contributors/:id', asyncHandler(c.getContributor));
 // ─── Observations ───
 router.get('/arrecifes/admin/observations', scope, auth, asyncHandler(c.listObservations));
 router.get('/arrecifes/admin/observations/:id', scope, auth, asyncHandler(c.getObservation));
+router.post('/arrecifes/admin/observations', scope, auth, asyncHandler(c.createObservationAdmin));
 router.post('/arrecifes/admin/observations/:id/review', scope, auth, validate(observationReviewSchema), asyncHandler(c.reviewObservation));
+router.patch('/arrecifes/admin/observations/:id', scope, auth, asyncHandler(c.updateObservation));
 router.delete('/arrecifes/admin/observations/:id', scope, auth, asyncHandler(c.deleteObservation));
 
 // Public read (only validated)
@@ -91,6 +94,9 @@ router.post('/arrecifes/observations', validate(observationSubmitSchema), asyncH
 // ─── Bleaching Alerts ───
 router.get('/arrecifes/alerts/bleaching', asyncHandler(c.listAlerts));
 router.post('/arrecifes/admin/alerts/bleaching', scope, auth, validate(bleachingAlertSchema), asyncHandler(c.createAlert));
+router.get('/arrecifes/admin/alerts/bleaching', scope, auth, asyncHandler(c.listAlerts));
+router.patch('/arrecifes/admin/alerts/bleaching/:id', scope, auth, asyncHandler(c.updateAlert));
+router.delete('/arrecifes/admin/alerts/bleaching/:id', scope, auth, asyncHandler(c.deleteAlert));
 
 // ─── Layers ───
 // Admin CRUD
@@ -139,6 +145,8 @@ router.get('/arrecifes/news/:id', asyncHandler(c.getReefNews));
 router.get('/arrecifes/admin/coastal-intrusions', scope, auth, asyncHandler(c.listCoastalIntrusions));
 router.get('/arrecifes/admin/coastal-intrusions/:id', scope, auth, asyncHandler(c.getCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/run', scope, auth, asyncHandler(c.runCoastalIntrusionDetection));
+router.post('/arrecifes/admin/coastal-intrusions', scope, auth, asyncHandler(c.createCoastalIntrusion));
+router.delete('/arrecifes/admin/coastal-intrusions/:id', scope, auth, asyncHandler(c.deleteCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/:id/verify', scope, auth, validate(coastalIntrusionVerifySchema), asyncHandler(c.verifyCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/:id/dismiss', scope, auth, validate(coastalIntrusionDismissSchema), asyncHandler(c.dismissCoastalIntrusion));
 router.post('/arrecifes/admin/coastal-intrusions/:id/escalate', scope, auth, validate(coastalIntrusionEscalateSchema), asyncHandler(c.escalateCoastalIntrusion));

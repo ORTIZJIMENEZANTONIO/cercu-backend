@@ -136,6 +136,11 @@ export const tierSchema = Joi.object({
   sortOrder: Joi.number().integer().default(0),
   visible: Joi.boolean().default(true),
   archived: Joi.boolean().default(false),
+  // Modo de participación (Fase reframe — visible en /contributors)
+  modeTitle: Joi.string().max(150).allow('', null).optional(),
+  audience: Joi.string().allow('', null).optional(),
+  contributions: Joi.array().items(Joi.string().max(300)).optional(),
+  bridge: Joi.string().allow('', null).optional(),
 });
 
 export const layerSchema = Joi.object({

@@ -415,11 +415,11 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - **Multi-tenant**: Routes use `/:observatory` param (`techos-verdes` | `humedales` | `arrecifes`), middleware validates admin has access
 - **Approval queue**: `ProspectSubmission` entity — external detectors POST prospects, admin approves/rejects
 
-### Entities (15)
+### Entities (22)
 **Shared:**
 - `ObservatoryAdmin` (`observatory_admins`) — id (uuid), email, passwordHash, name, observatories (simple-array), isActive
 - `ProspectSubmission` (`obs_prospect_submissions`) — id, observatory, status (pendiente/aprobado/rechazado), data (JSON), source, confianzaDetector, notasAdmin, reviewedBy, reviewedAt
-- `ObsCmsSection` (`obs_cms_sections`) — CMS page sections: pageSlug, sectionKey, items (JSON array), updatedBy
+- `ObsCmsSection` (`obs_cms_sections`) — CMS page sections, **multi-tenant**: observatory (default `'humedales'`), pageSlug, sectionKey, items (JSON array), updatedBy. Índice compuesto `(observatory, pageSlug, sectionKey)` para el lookup del servicio. Cada observatorio mantiene su propio set de secciones — sin colisiones por `pageSlug='home'`
 
 **Techos verdes:**
 - `ObsGreenRoof` (`obs_green_roofs`) — green roof CRUD data
@@ -444,8 +444,8 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 ⚠️ **Bug TypeORM:** combinar `@Column({ unique: true })` + `@Index()` en la misma columna genera dos índices con el mismo nombre y revienta el `CREATE TABLE` con `Duplicate key name`. `unique: true` ya crea el índice — basta con uno (ver `Layer.ts:14`, `Tier.ts:18`).
 
 **Routes arrecifes** (mounted under `/api/v1/observatory/arrecifes/`):
-- Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`, `/layers[?provider=&category=&kind=]`, `/layers/:id` (acepta id numérico o slug), `/layers/:id/download` (sirve archivo o redirect 302), `/tiers` (acepta id o slug)
-- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors|layers|tiers}`, `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `POST /admin/alerts/bleaching` (ingest NOAA CRW), `POST /admin/layers/:id/upload` (multer multipart "file", ≤50 MB, GeoJSON/KML/KMZ/Shapefile zip/GeoTIFF/CSV), `POST /admin/reefs/refresh-climate` (batch NASA POWER de los 12 reefs, secuencial 350 ms entre requests), `POST /admin/reefs/:id/refresh-climate` (un solo reef)
+- Públicas: `GET /reefs[?ocean=&status=&state=]`, `/reefs/:id`, `/reefs/metrics?days=N`, `/reefs/:id/metrics?days=N` (snapshots históricos), `/conflicts`, `/contributors`, `/observations` (validated only), `/alerts/bleaching?latestPerReef=true`, `/layers[?provider=&category=&kind=]`, `/layers/:id` (acepta id numérico o slug), `/layers/:id/download` (sirve archivo o redirect 302), `/tiers` (acepta id o slug)
+- Admin (Bearer JWT): full CRUD `/admin/{reefs|conflicts|contributors|layers|tiers}`. Observaciones: `POST /admin/observations` (admin crea directo, default `validated`), `POST /admin/observations/:id/review` (workflow validar/rechazar/needs_more_info → actualiza counters de contributor + reef), `PATCH /admin/observations/:id` (edita metadatos sin cambiar estado), `DELETE /admin/observations/:id`. Alertas: `GET/POST/PATCH/DELETE /admin/alerts/bleaching[/:id]` (cualquier mutación sincroniza `reef.bleachingAlert` y `reef.status`). Snapshots: `POST /admin/reefs/snapshot` (idempotente por día, captura los 12 reefs), `DELETE /admin/reefs/snapshots/:id` (limpieza puntual). Layers: `POST /admin/layers/:id/upload` (multer multipart "file", ≤50 MB, GeoJSON/KML/KMZ/Shapefile zip/GeoTIFF/CSV). Climatología: `POST /admin/reefs/refresh-climate` (batch NASA POWER de los 12 reefs, secuencial 350 ms entre requests), `POST /admin/reefs/:id/refresh-climate` (un solo reef). Coastal intrusions: además del detector y workflow ya documentado, `POST /admin/coastal-intrusions` (creación manual con Point→buffer 25m o Polygon/MultiPolygon, source=`manual`) y `DELETE /admin/coastal-intrusions/:id`.
 - Submission ciudadana: `POST /observations` (sin auth → estado `pending`)
 
 **NASA POWER integration** (`modules/observatory/arrecifes/nasaPower.service.ts`):
@@ -466,12 +466,15 @@ Shared backend for **three** observatory frontends: **observatorio-techos-verdes
 - `1725...` → `1732000000000` ya documentadas en sus secciones respectivas (NASA POWER + InteractionEvent · isActive/lastLogin admin · scraper notihumedal · snapshots · noticias arrecifes · coastal intrusions Fase 1/2/3).
 - `1733000000000-EnsureCmsSectionsTable.ts` — crea `obs_cms_sections` si no existe. Cierra brecha histórica: la entidad `ObsCmsSection` se creó hace tiempo con auto-sync y nunca tuvo migración explícita.
 - `1734000000000-EnsureProspectSubmissionsTable.ts` — crea `obs_prospect_submissions` si no existe. Cola compartida de prospectos para techos-verdes y humedales (no arrecifes — éste tiene `obs_observations` y `obs_reef_news_prospects` propios). Misma situación que 1733: la entidad existía sin migración explícita.
+- `1735000000000-AddModeFieldsToObsTiers.ts` — añade `modeTitle`, `audience`, `contributions` (JSON), `bridge` a `obs_tiers` para el reframe de "modos de participación" en `/contributors`.
+- `1736000000000-AddObservatoryToCmsSections.ts` — añade columna `observatory` a `obs_cms_sections` con default `'humedales'` (backfill para preservar las secciones existentes) + índice compuesto `(observatory, pageSlug, sectionKey)`. Permite que arrecifes tenga su propio set de secciones sin colisionar con humedales en `pageSlug='home'`. Idempotente vía `SHOW COLUMNS / SHOW INDEX`.
 
 **Seeds** (en `src/seeds/run.ts`, idempotentes — actualizan si existe `id`/`slug`):
 - `arrecifes.seed.ts` — 12 reefs mexicanos + 8 contributors + 6 conflicts (Tren Maya, anclaje cruceros, sargazo, SCTLD, sobrepesca, aguas residuales) + galería Unsplash 3 fotos por reef + **5 tiers** (Bronce/Plata/Oro/Platino/Coral con `minScore`/`maxScore`/`color`/`requirements`) + **13 layers** iniciales (NOAA CRW, NASA MODIS/PACE, ESA Sentinel-2, GEBCO, CONABIO ANP+coral, CONANP, GFW, NOAA SaWS, INEGI). Las layers son `kind=external_url`; el admin puede subir `kind=uploaded_file` después.
 - `arrecifes-observations.seed.ts` — 6 observations cubriendo todo el workflow (1 pending, 1 in_review, 2 validated, 1 rejected, 1 needs_more_info) — demo de la cola de revisión
 - `arrecifes-alerts.seed.ts` — 12 alertas NOAA CRW (una por reef) con DHW/SST/anomalía realistas: SAM en warning/alert_1, Pacífico BCS no_stress, Huatulco warning
-- `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`)
+- `observatory-content.seed.ts` — secciones CMS multi-tenant. **Humedales**: home/features, home/tipologias, sobre/criterios. **Arrecifes**: 30 secciones cubriendo home (hero/features/sectionTitle/alerts/contributorsTeaser/cta), about (hero/mission/inspirations/sources/reputationIntro/validation/licenses/contact), contribute (hero/sidebar/notice), contributors (hero/modesIntro/networkCallout/cta), heros sueltos (inventory/atlas/data-sources/noticias/observations) y footer (brand/attribution/sources/quickLinks/institutional). Idempotente con count por observatory.
+- `observatory-admin.seed.ts` — el `ObservatoryAdmin` master se crea con `observatories: ['techos-verdes', 'humedales', 'arrecifes']` y permisos extendidos (incluyendo `manage_reefs`, `review_submissions`, `manage_conflicts`, `manage_contributors`, `manage_layers`, `manage_cms`)
 
 ### Observatory API Routes
 Base: `/api/v1/observatory`
@@ -484,7 +487,15 @@ POST /auth/login                              # Email + password → JWT tokens
 GET  /auth/me                                 # Current admin info
 
 # Admin (protected, scoped by observatory)
-GET  /:observatory/admin/summary              # Dashboard stats (content counts + prospect counts)
+GET  /:observatory/admin/summary              # Dashboard stats. Para arrecifes el payload
+                                              # cubre toda la plataforma (content/totals,
+                                              # observationsByStatus, reefsByStatus,
+                                              # contributorsByTier, contributorsVerified,
+                                              # alertsByLevel, alertsCritical (DHW≥4),
+                                              # latestAlertAt, coastalIntrusions,
+                                              # layersByKind, newsProspects, snapshots,
+                                              # climate.reefsWithData) — todo paralelizado
+                                              # con Promise.all. Ver `ArrecifesService.getSummary`.
 
 # Prospects (admin)
 GET  /:observatory/admin/prospectos           # List prospects (filterable by status)
@@ -517,9 +528,9 @@ POST /:observatory/admin/notihumedal/prospectos/:id/aprobar   # Approve scraped 
 POST /:observatory/admin/notihumedal/prospectos/:id/rechazar  # Reject scraped news
 POST /:observatory/admin/notihumedal/scraper/run              # Trigger scraper Mongabay México
 
-# CMS Sections (admin)
-GET  /:observatory/admin/cms/:pageSlug                    # Get all sections for page
-PUT  /:observatory/admin/cms/:pageSlug/:sectionKey        # Save section content
+# CMS Sections (admin) — scoped por observatory en el servicio
+GET  /:observatory/admin/cms/:pageSlug                    # Get all sections for page (scope: observatory + pageSlug)
+PUT  /:observatory/admin/cms/:pageSlug/:sectionKey        # Upsert section (scope: observatory + pageSlug + sectionKey)
 
 # Admin Users (admin)
 GET    /:observatory/admin/usuarios           # List admin users for observatory
@@ -546,7 +557,7 @@ GET /:observatory/humedales/:id               # Get wetland
 GET /:observatory/hallazgos                   # List hallazgos
 GET /:observatory/hallazgos/:id               # Get hallazgo
 GET /:observatory/notihumedal                 # List articles  ?search&autor&tag&fechaDesde&fechaHasta
-GET /:observatory/cms/:pageSlug/:sectionKey   # Read CMS section
+GET /:observatory/cms/:pageSlug/:sectionKey   # Read CMS sections (controller ignora :sectionKey y devuelve TODAS las secciones de la página — el cliente filtra)
 
 # Geospatial Detector (admin)
 POST /:observatory/detector/run               # Run detection (OSM + Turf.js)
@@ -638,6 +649,13 @@ Endpoints (admin-only — la entidad NO se expone en endpoints públicos):
 ```
 GET    /admin/coastal-intrusions[?reefId=&status=&page=&limit=]
 GET    /admin/coastal-intrusions/:id
+POST   /admin/coastal-intrusions                 # creación manual
+                                                 # body: {reefId, geometry (Point|Polygon|
+                                                 # MultiPolygon), status?='verified',
+                                                 # reviewerNotes?, osmId?, osmTags?}
+                                                 # Point se convierte en buffer de 25 m;
+                                                 # source='manual'
+DELETE /admin/coastal-intrusions/:id             # limpieza puntual (manuales o descartados)
 POST   /admin/coastal-intrusions/run[?reefId=]   # un reef o todos
 POST   /admin/coastal-intrusions/:id/verify      # body: {notes?}
 POST   /admin/coastal-intrusions/:id/dismiss     # body: {notes} (req)

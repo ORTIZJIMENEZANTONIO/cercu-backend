@@ -530,27 +530,29 @@ export class ObservatoryAdminService {
   //  CMS Sections
   // ══════════════════════════════════════
 
-  async getCmsSections(pageSlug: string) {
-    const sections = await cmsSectionRepo().find({ where: { pageSlug } });
+  async getCmsSections(observatory: string, pageSlug: string) {
+    const sections = await cmsSectionRepo().find({ where: { observatory, pageSlug } });
     const result: Record<string, any[]> = {};
     for (const s of sections) result[s.sectionKey] = s.items;
     return { sections: result };
   }
 
   async saveCmsSection(
+    observatory: string,
     pageSlug: string,
     sectionKey: string,
     items: any[],
     adminId: string
   ) {
     let section = await cmsSectionRepo().findOne({
-      where: { pageSlug, sectionKey },
+      where: { observatory, pageSlug, sectionKey },
     });
     if (section) {
       section.items = items;
       section.updatedBy = adminId;
     } else {
       section = cmsSectionRepo().create({
+        observatory,
         pageSlug,
         sectionKey,
         items,

@@ -310,12 +310,18 @@ export class ObservatoryAdminController {
 
   // ──────────── CMS Sections ────────────
   async getCmsSections(req: Request, res: Response) {
-    const result = await service.getCmsSections(req.params.pageSlug);
+    const result = await service.getCmsSections(req.params.observatory, req.params.pageSlug);
     res.json({ success: true, ...result });
   }
 
   async saveCmsSection(req: Request, res: Response) {
-    const result = await service.saveCmsSection(req.params.pageSlug, req.params.sectionKey, req.body.items, req.user!.id);
+    const result = await service.saveCmsSection(
+      req.params.observatory,
+      req.params.pageSlug,
+      req.params.sectionKey,
+      req.body.items,
+      req.user!.id,
+    );
     res.json({ success: true, data: result });
   }
 

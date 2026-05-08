@@ -79,22 +79,82 @@ const LAYERS = [
   { slug: 'inegi-uso-suelo-costero', title: 'INEGI — Uso del suelo y vegetación costera (Serie VII)', description: 'Cobertura terrestre 1:250,000 incluyendo manglares, dunas y cuerpos de agua.', kind: 'external_url', provider: 'inegi', providerLabel: 'INEGI', category: 'land_use', format: 'shapefile', coverage: 'national', license: 'Datos Abiertos México', attribution: 'INEGI (2023). Carta de Uso del Suelo y Vegetación, Serie VII.', sourceUrl: 'https://www.inegi.org.mx/temas/usosuelo/', lastUpdated: '2023-06-01', active: false, sortOrder: 13 },
 ];
 
+// Cinco MODOS de cuidar el mismo arrecife (no son niveles, son maneras
+// distintas pero igual de válidas). Cada slug histórico (bronze/silver/...)
+// se reinterpreta como un modo. Los campos modeTitle/audience/contributions/
+// bridge alimentan la sección "5 maneras de cuidar el mismo arrecife" en
+// /contributors. El admin los edita desde /admin/tiers.
 const TIERS = [
-  { slug: 'bronze', label: 'Bronce', minScore: 0, maxScore: 199, color: 'amber', icon: 'lucide:medal',
+  {
+    slug: 'bronze', label: 'Bronce', minScore: 0, maxScore: 199, color: 'amber',
+    icon: 'lucide:eye', sortOrder: 1,
     description: 'Inicial. Hasta 199 puntos.',
-    requirements: 'Primer aporte validado.', sortOrder: 1 },
-  { slug: 'silver', label: 'Plata', minScore: 200, maxScore: 499, color: 'slate', icon: 'lucide:medal',
+    requirements: 'Primer aporte validado.',
+    modeTitle: 'Curiosidad ciudadana',
+    audience: 'Personas con interés en el mar mexicano, sin formación técnica formal. Visitas a la playa, snorkel ocasional, vínculo cultural con la costa.',
+    contributions: [
+      'Foto de un arrecife con ubicación y fecha',
+      'Reporte de cambios visibles (color, sargazo, peces)',
+      'Preguntas abiertas al equipo del observatorio',
+    ],
+    bridge: 'El primer ojo que detecta algo nuevo. Las personas del mar y de campo verifican lo que reporta este modo.',
+  },
+  {
+    slug: 'silver', label: 'Plata', minScore: 200, maxScore: 499, color: 'slate',
+    icon: 'lucide:anchor', sortOrder: 2,
     description: '200–499 puntos.',
-    requirements: '30+ aportes validados.', sortOrder: 2 },
-  { slug: 'gold', label: 'Oro', minScore: 500, maxScore: 699, color: 'yellow', icon: 'lucide:medal',
+    requirements: '30+ aportes validados.',
+    modeTitle: 'Conocimiento del mar',
+    audience: 'Pescadoras, buzos, operadoras turísticas, comunidades costeras. Saber empírico construido sobre años de presencia en el agua.',
+    contributions: [
+      'Patrones locales: mareas, especies, blanqueamiento estacional',
+      'Histórico oral de eventos en su zona (huracanes, derrames)',
+      'Verificación en campo de capas satelitales',
+    ],
+    bridge: 'Da contexto territorial a los datos satelitales y a los muestreos académicos. Sin este modo, los números flotan.',
+  },
+  {
+    slug: 'gold', label: 'Oro', minScore: 500, maxScore: 699, color: 'yellow',
+    icon: 'lucide:droplets', sortOrder: 3,
     description: '500–699 puntos.',
-    requirements: '60+ aportes, calidad ≥75%, 3+ meses activo.', sortOrder: 3 },
-  { slug: 'platinum', label: 'Platino', minScore: 700, maxScore: 999, color: 'cyan', icon: 'lucide:gem',
+    requirements: '60+ aportes, calidad ≥75%, 3+ meses activo.',
+    modeTitle: 'Trabajo en agua',
+    audience: 'Profesionales de campo: buzos certificados, biólogas, oceanógrafas, pilotas de dron. Mediciones in situ con instrumentación.',
+    contributions: [
+      'Transectos cuantitativos de cobertura coralina',
+      'Vuelos de dron submarino y aéreo',
+      'Muestreos de calidad de agua y temperatura',
+    ],
+    bridge: 'Traduce el conocimiento del mar y la observación ciudadana en mediciones replicables que la academia puede analizar.',
+  },
+  {
+    slug: 'platinum', label: 'Platino', minScore: 700, maxScore: 999, color: 'cyan',
+    icon: 'lucide:microscope', sortOrder: 4,
     description: '700–999 puntos.',
-    requirements: '90+ aportes, calidad ≥85%, 6+ meses activo.', sortOrder: 4 },
-  { slug: 'coral', label: 'Coral', minScore: 1000, maxScore: null, color: 'coral', icon: 'lucide:crown',
+    requirements: '90+ aportes, calidad ≥85%, 6+ meses activo.',
+    modeTitle: 'Investigación formal',
+    audience: 'Academia, ICML-UNAM, CINVESTAV, posgrados, ONGs científicas. Trabajo revisado por pares y series de tiempo de largo plazo.',
+    contributions: [
+      'Estudios peer-reviewed publicados',
+      'Series de tiempo de monitoreo (DHW, SST, cobertura)',
+      'Procesamiento de datos satelitales NASA / NOAA / ESA',
+    ],
+    bridge: 'Provee el marco metodológico y la rigurosidad estadística. Reúne aportes de los otros modos para construir narrativa científica.',
+  },
+  {
+    slug: 'coral', label: 'Coral', minScore: 1000, maxScore: null, color: 'coral',
+    icon: 'lucide:network', sortOrder: 5,
     description: 'Top 1%. 1000+ puntos.',
-    requirements: 'Identidad y trayectoria verificadas.', sortOrder: 5 },
+    requirements: 'Identidad y trayectoria verificadas.',
+    modeTitle: 'Síntesis y curaduría',
+    audience: 'Equipo del observatorio, revisores con trayectoria, instituciones aliadas (CONANP, SEMARNAT, CIIEMAD-IPN).',
+    contributions: [
+      'Validación cruzada entre los cinco modos',
+      'Coordinación con CONANP y comunidades',
+      'Publicación oficial y comunicación pública',
+    ],
+    bridge: 'Cierra el ciclo: integra la mirada ciudadana, el saber del mar, los datos de campo y la investigación en una sola voz pública.',
+  },
 ];
 
 export async function seedArrecifes() {

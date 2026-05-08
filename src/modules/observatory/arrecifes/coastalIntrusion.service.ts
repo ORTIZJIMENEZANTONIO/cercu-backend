@@ -443,6 +443,122 @@ export class CoastalIntrusionService {
     return { intrusion: r, conflict: savedConflict };
   }
 
+  // ──────────────────────────── Manual entry ────────────────────────────
+  // El detector OSM no captura todo (especialmente edificios sin mapear). Este
+  // endpoint permite al revisor crear un caso manualmente a partir de un
+  // polígono GeoJSON dibujado o pegado, atribuyendo a un arrecife concreto.
+  //
+  // Defaults:
+  //   - status = 'verified' (asume que el revisor ya confirmó visualmente)
+  //   - source = 'manual'
+  //   - centroid: si el geometry es Point se usa tal cual; si es Polygon se
+  //     calcula con turf.centroid; si es MultiPolygon se usa el centroide del
+  //     primer polígono.
+  //   - areaM2: si es Polygon/MultiPolygon, turf.area; si es Point, null.
+  async createManual(
+    payload: {
+      reefId: number | null;
+      geometry: any;
+      status?: string;
+      reviewerNotes?: string;
+      osmId?: string;
+      osmTags?: Record<string, string>;
+    },
+    adminId: string,
+  ) {
+    if (!payload.geometry || typeof payload.geometry !== 'object') {
+      throw new AppError('Falta `geometry` GeoJSON', 400);
+    }
+    const geomType = payload.geometry.type;
+    if (!['Point', 'Polygon', 'MultiPolygon'].includes(geomType)) {
+      throw new AppError(
+        `geometry.type debe ser Point | Polygon | MultiPolygon (recibido ${geomType})`,
+        400,
+      );
+    }
+
+    let centroidLat: number;
+    let centroidLng: number;
+    let areaM2: number | null = null;
+    let polygonGeom: any = payload.geometry;
+
+    if (geomType === 'Point') {
+      const [lng, lat] = payload.geometry.coordinates as [number, number];
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        throw new AppError('Point.coordinates debe ser [lng, lat] numérico', 400);
+      }
+      centroidLat = lat;
+      centroidLng = lng;
+      // Convertimos un Point a un buffer pequeño para almacenar como polígono y
+      // que la UI lo trate igual que las detecciones automáticas.
+      const buffered = turf.buffer(turf.point([lng, lat]), 25, { units: 'meters' });
+      polygonGeom = buffered?.geometry ?? payload.geometry;
+      try {
+        areaM2 = buffered ? turf.area(buffered) : null;
+      } catch {
+        areaM2 = null;
+      }
+    } else {
+      try {
+        const c = turf.centroid(payload.geometry as any);
+        const [lng, lat] = c.geometry.coordinates;
+        centroidLat = lat;
+        centroidLng = lng;
+      } catch {
+        throw new AppError('No se pudo calcular el centroide del geometry', 400);
+      }
+      try {
+        areaM2 = turf.area(payload.geometry as any);
+      } catch {
+        areaM2 = null;
+      }
+    }
+
+    const status = payload.status ?? 'verified';
+    if (!['candidate', 'verified', 'dismissed'].includes(status)) {
+      throw new AppError(`status inválido: ${status}`, 400);
+    }
+
+    const row = intrusionRepo().create({
+      reefId: payload.reefId ?? null,
+      osmId: payload.osmId ?? null,
+      osmTags: payload.osmTags ?? null,
+      geometry: polygonGeom,
+      centroidLat: Number(centroidLat.toFixed(7)),
+      centroidLng: Number(centroidLng.toFixed(7)),
+      areaM2: areaM2 !== null ? Number(areaM2.toFixed(2)) : null,
+      zofematOverlapPct: null,
+      status,
+      source: 'manual',
+      detectedAt: new Date(),
+      reviewedBy: status === 'candidate' ? null : adminId,
+      reviewedAt: status === 'candidate' ? null : new Date(),
+      reviewerNotes: payload.reviewerNotes ?? null,
+      escalatedConflictId: null,
+      ndbiBaseline: null,
+      ndbiCurrent: null,
+      ndbiDelta: null,
+      noveltyScore: null,
+      noveltyAnalyzedAt: null,
+      noveltyEpochs: null,
+      ndviBaseline: null,
+      ndviCurrent: null,
+      ndviDelta: null,
+      samplingMethod: null,
+      noveltyTimeSeries: null,
+    });
+    return intrusionRepo().save(row);
+  }
+
+  // Borra una detección (sólo manuales o casos descartados deberían llegar
+  // aquí — un caso ya escalado a `ObsConflict` se debería limpiar primero el
+  // conflicto). Sin restricción dura: dejamos juicio al admin.
+  async deleteManual(id: number) {
+    const r = await this.get(id);
+    await intrusionRepo().remove(r);
+    return { deleted: true };
+  }
+
   // ════════════════════════════════════════════════════════════════
   //  Fase 2 — Detección de cambio temporal vía NDBI Sentinel-2
   // ════════════════════════════════════════════════════════════════

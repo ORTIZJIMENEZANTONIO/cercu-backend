@@ -83,6 +83,11 @@ export class ArrecifesController {
     res.json({ success: true, data: result });
   }
 
+  async deleteReefSnapshot(req: Request, res: Response) {
+    const result = await service.deleteReefSnapshot(Number(req.params.id));
+    res.json({ success: true, data: result });
+  }
+
   async listReefMetrics(req: Request, res: Response) {
     const id = Number(req.params.id);
     const days = req.query.days ? Number(req.query.days) : undefined;
@@ -216,8 +221,18 @@ export class ArrecifesController {
     res.status(201).json({ success: true, data: result });
   }
 
+  async createObservationAdmin(req: Request, res: Response) {
+    const result = await service.createObservationAdmin(req.body, req.user!.id);
+    res.status(201).json({ success: true, data: result });
+  }
+
   async reviewObservation(req: Request, res: Response) {
     const result = await service.reviewObservation(Number(req.params.id), req.user!.id, req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async updateObservation(req: Request, res: Response) {
+    const result = await service.updateObservation(Number(req.params.id), req.body);
     res.json({ success: true, data: result });
   }
 
@@ -240,6 +255,16 @@ export class ArrecifesController {
   async createAlert(req: Request, res: Response) {
     const result = await service.createAlert(req.body);
     res.status(201).json({ success: true, data: result });
+  }
+
+  async updateAlert(req: Request, res: Response) {
+    const result = await service.updateAlert(Number(req.params.id), req.body);
+    res.json({ success: true, data: result });
+  }
+
+  async deleteAlert(req: Request, res: Response) {
+    const result = await service.deleteAlert(Number(req.params.id));
+    res.json({ success: true, data: result });
   }
 
   // ─── Layers ───
@@ -449,6 +474,19 @@ export class ArrecifesController {
   async runCoastalIntrusionDetection(req: Request, res: Response) {
     const reefId = req.query.reefId ? Number(req.query.reefId) : undefined;
     const result = await coastalService.runDetection(reefId);
+    res.json({ success: true, data: result });
+  }
+
+  // Caso manual: el revisor tiene una invasión documentada que el detector OSM
+  // no captó (ej. estructura no mapeada en OpenStreetMap todavía).
+  async createCoastalIntrusion(req: Request, res: Response) {
+    const adminId = (req as any).user?.id || 'unknown';
+    const result = await coastalService.createManual(req.body, adminId);
+    res.status(201).json({ success: true, data: result });
+  }
+
+  async deleteCoastalIntrusion(req: Request, res: Response) {
+    const result = await coastalService.deleteManual(Number(req.params.id));
     res.json({ success: true, data: result });
   }
 

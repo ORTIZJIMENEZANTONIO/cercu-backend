@@ -52,13 +52,34 @@ export class EventsService {
     const ipHash = hashIp(ctx.ip);
     const ua = truncate(ctx.userAgent, 250);
 
+    // Normaliza el path antes de persistir (quita query/hash) — alinea con
+    // el cliente nuevo y blinda contra clientes legacy o curl manual que
+    // mandan paths con query string. También captura `referrer` para
+    // filtros adicionales si fuera necesario.
+    const canonicalize = (p: string | null | undefined): string | null => {
+      if (!p) return null;
+      return p.split('?')[0].split('#')[0] || '/';
+    };
+
+    // Defensa en profundidad: rechaza eventos cuyo PATH apunte al panel admin.
+    // El cliente ya los filtra (`useTracking.isInternalPath`), pero alguien
+    // con devtools o un fetch manual podría seguir mandándolos. Aquí los
+    // descartamos silenciosamente (no error 400) — el cliente no debe saber
+    // si entraron o no, sólo que el batch fue aceptado.
+    const isInternalPath = (p: string | null): boolean => {
+      if (!p) return false;
+      return p === '/admin' || p.startsWith('/admin/');
+    };
+
     const records = events
       .filter((e) => e && VALID_TYPES.includes(e.type) && typeof e.sessionId === 'string' && e.sessionId.length > 0)
+      .map((e) => ({ ...e, path: canonicalize(truncate(e.path, 250) as any) }))
+      .filter((e) => !isInternalPath(e.path))
       .map((e) =>
         repo().create({
           observatory: ctx.observatory,
           eventType: e.type,
-          path: truncate(e.path, 250),
+          path: e.path,
           target: truncate(e.target, 250),
           sessionId: e.sessionId.slice(0, 64),
           userId: ctx.userId || null,
@@ -86,15 +107,24 @@ export class EventsService {
     // Raw query para evitar cualquier raresa de TypeORM con DATETIME(6) en MySQL.
     const fromStr = from.toISOString().slice(0, 19).replace('T', ' ');
     const toStr = to.toISOString().slice(0, 19).replace('T', ' ');
-    // Excluye tráfico interno del panel admin (legacy, ya filtrado en cliente
-    // pero sirve para limpiar datos viejos sin tener que purgar la tabla).
+    // Excluye tráfico interno del panel admin. Triple filtro:
+    //   1. path empieza con `/admin/` (incluyendo `/admin` exacto)
+    //   2. ingest backend ya rechaza estos pero el SQL filtra el legacy
+    //   3. eventos con path NULL que apuntan a /admin (raros) también fuera
+    // El cliente nuevo manda paths normalizados sin query, pero filtramos
+    // también con `LIKE '/admin/%'` y `= '/admin'` para cubrir histórico
+    // que pudiera tener `?param=...`.
     const events: Array<{ eventType: string; path: string | null; target: string | null; sessionId: string; createdAt: Date | string }> = await repo().query(
       `SELECT eventType, path, target, sessionId, createdAt
          FROM observatory_interaction_events
         WHERE observatory = ?
           AND createdAt >= ?
           AND createdAt <= ?
-          AND (path IS NULL OR path NOT LIKE '/admin%')
+          AND path IS NOT NULL
+          AND path <> '/admin'
+          AND path NOT LIKE '/admin/%'
+          AND path NOT LIKE '/admin?%'
+          AND path NOT LIKE '/admin#%'
         ORDER BY createdAt ASC`,
       [observatory, fromStr, toStr],
     );
@@ -126,7 +156,12 @@ export class EventsService {
       sessionsByDay[dayKey].add(ev.sessionId);
 
       if (ev.eventType === 'pageview' && ev.path) {
-        byPath[ev.path] = (byPath[ev.path] || 0) + 1;
+        // Normaliza el path: quita query string y hash para que `/livemap?
+        // ocean=caribbean` y `/livemap?status=alert` cuenten como la misma
+        // ruta. El cliente nuevo ya manda paths normalizados, esto cubre el
+        // histórico que entró antes del fix.
+        const canonical = ev.path.split('?')[0].split('#')[0] || '/';
+        byPath[canonical] = (byPath[canonical] || 0) + 1;
       }
       if (ev.eventType === 'click' && ev.target) {
         byTarget[ev.target] = (byTarget[ev.target] || 0) + 1;
