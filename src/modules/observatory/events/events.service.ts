@@ -114,7 +114,7 @@ export class EventsService {
     // El cliente nuevo manda paths normalizados sin query, pero filtramos
     // también con `LIKE '/admin/%'` y `= '/admin'` para cubrir histórico
     // que pudiera tener `?param=...`.
-    const events: Array<{ eventType: string; path: string | null; target: string | null; sessionId: string; createdAt: Date | string }> = await repo().query(
+    const events: AggregateEvent[] = await repo().query(
       `SELECT eventType, path, target, sessionId, createdAt
          FROM observatory_interaction_events
         WHERE observatory = ?
@@ -128,6 +128,42 @@ export class EventsService {
         ORDER BY createdAt ASC`,
       [observatory, fromStr, toStr],
     );
+
+    const aggregated = aggregateEvents(events, days);
+    return { observatory, from: from.toISOString(), to: to.toISOString(), ...aggregated };
+  }
+}
+
+// Tipo del evento crudo necesario para agregación. Aislado para que
+// `aggregateEvents` sea una función pura testable sin TypeORM.
+export interface AggregateEvent {
+  eventType: string;
+  path: string | null;
+  target: string | null;
+  sessionId: string;
+  createdAt: Date | string;
+}
+
+/**
+ * Agregación pura de eventos para el endpoint /admin/analytics/summary.
+ *
+ * **Clave del fix de pageviews**: el conteo `totals.pageviews` está
+ * deduplicado por la triple `(sessionId, día, path canónico)`. Esto significa:
+ *
+ * - Una misma sesión recargando `/inventario` 5 veces el mismo día → 1 pageview
+ * - La misma sesión visitando `/inventario` un día y otro día distinto → 2 pageviews
+ * - La misma sesión visitando `/inventario` y luego `/mapa` el mismo día → 2 pageviews
+ * - Dos sesiones distintas visitando `/inventario` el mismo día → 2 pageviews
+ *
+ * Cuando se cumple un match en la dedup, `totals.pageviewsRaw` sigue contando
+ * el evento — útil para distinguir "tráfico de calidad" (sesiones × páginas)
+ * de "engagement intra-sesión" (cuántas veces recargan dentro de la misma
+ * sesión-día-path).
+ *
+ * `topPaths` también está deduplicado: la "popularidad" de cada path se mide
+ * en sesiones únicas por día, no en eventos raw.
+ */
+export function aggregateEvents(events: AggregateEvent[], days: number) {
     const total = events.length;
 
     // Aggregations
@@ -137,6 +173,22 @@ export class EventsService {
     const byTarget: Record<string, number> = {};
     const sessions = new Set<string>();
     const sessionsByDay: Record<string, Set<string>> = {};
+
+    // Para deduplicación de pageviews: la clave única es `sessionId|day|path`.
+    // De esta forma una misma sesión recargando `/inventario` 5 veces el mismo
+    // día cuenta como **1 pageview único** (no 5). Visitas a `/inventario` en
+    // días distintos sí cuentan separado; visitas a paths diferentes en el
+    // mismo día también cuentan separado.
+    //
+    // Si en el futuro se quiere mayor granularidad (ej. 30 min de ventana en
+    // lugar de un día), se cambia la composición de la clave. Por ahora, día
+    // completo coincide con la convención de Plausible / Google Analytics
+    // para "unique pageviews".
+    const uniquePageviewKeys = new Set<string>();
+    const uniquePageviewByDay: Record<string, Set<string>> = {};
+    const uniquePageviewByPath: Record<string, Set<string>> = {};
+
+    let pageviewsRaw = 0;
 
     for (const ev of events) {
       byType[ev.eventType] = (byType[ev.eventType] || 0) + 1;
@@ -156,20 +208,36 @@ export class EventsService {
       sessionsByDay[dayKey].add(ev.sessionId);
 
       if (ev.eventType === 'pageview' && ev.path) {
+        pageviewsRaw += 1;
         // Normaliza el path: quita query string y hash para que `/livemap?
         // ocean=caribbean` y `/livemap?status=alert` cuenten como la misma
         // ruta. El cliente nuevo ya manda paths normalizados, esto cubre el
         // histórico que entró antes del fix.
         const canonical = ev.path.split('?')[0].split('#')[0] || '/';
-        byPath[canonical] = (byPath[canonical] || 0) + 1;
+
+        // Dedup: (sessionId, day, path)
+        const key = `${ev.sessionId}|${dayKey}|${canonical}`;
+        if (!uniquePageviewKeys.has(key)) {
+          uniquePageviewKeys.add(key);
+          // Conteo por día (para series)
+          if (!uniquePageviewByDay[dayKey]) uniquePageviewByDay[dayKey] = new Set();
+          uniquePageviewByDay[dayKey].add(`${ev.sessionId}|${canonical}`);
+          // Conteo por path (para topPaths) — cuenta sesiones únicas por día
+          if (!uniquePageviewByPath[canonical]) uniquePageviewByPath[canonical] = new Set();
+          uniquePageviewByPath[canonical].add(`${ev.sessionId}|${dayKey}`);
+          // byPath final = tamaño del set (sesiones únicas por día visitando este path)
+          byPath[canonical] = uniquePageviewByPath[canonical].size;
+        }
       }
       if (ev.eventType === 'click' && ev.target) {
         byTarget[ev.target] = (byTarget[ev.target] || 0) + 1;
       }
     }
 
+    const pageviewsUnique = uniquePageviewKeys.size;
+
     // Build complete day series (no gaps) for the last `days` days
-    const series: { date: string; events: number; sessions: number }[] = [];
+    const series: { date: string; events: number; sessions: number; pageviews: number }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -178,6 +246,7 @@ export class EventsService {
         date: key,
         events: byDay[key] || 0,
         sessions: sessionsByDay[key]?.size || 0,
+        pageviews: uniquePageviewByDay[key]?.size || 0,
       });
     }
 
@@ -188,14 +257,18 @@ export class EventsService {
         .map(([key, count]) => ({ key, count }));
 
     return {
-      observatory,
-      from: from.toISOString(),
-      to: to.toISOString(),
       days,
       totals: {
         events: total,
         sessions: sessions.size,
-        pageviews: byType['pageview'] || 0,
+        // pageviews por defecto = únicos (deduplicados por sessionId+día+path).
+        // Una recarga del mismo path por la misma sesión en el mismo día NO
+        // suma. Esto evita inflación del número por reloads, F5 espontáneos o
+        // navegación de ida-vuelta en SPA.
+        pageviews: pageviewsUnique,
+        // pageviewsRaw conserva el conteo crudo (cada evento es un +1). Útil
+        // para distinguir "tráfico de calidad" vs "engagement intra-sesión".
+        pageviewsRaw,
         clicks: byType['click'] || 0,
         submits: byType['submit'] || 0,
         downloads: byType['download'] || 0,
@@ -205,5 +278,4 @@ export class EventsService {
       topPaths: top(byPath, 10),
       topTargets: top(byTarget, 10),
     };
-  }
 }
