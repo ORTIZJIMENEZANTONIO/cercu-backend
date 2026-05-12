@@ -166,7 +166,7 @@ const ADMIN_PERMISSIONS = [
   // Humedales
   'manage_humedales', 'manage_hallazgos', 'manage_notihumedal', 'manage_prospectos',
   // Techos verdes
-  'manage_techos',
+  'manage_techos', 'manage_candidatos', 'manage_validaciones',
   // Arrecifes
   'manage_reefs', 'manage_layers', 'manage_observations',
   'manage_conflicts', 'manage_contributors', 'review_submissions',
