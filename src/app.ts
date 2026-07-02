@@ -23,6 +23,7 @@ import observatoryAuthRoutes from './modules/observatory/auth/observatory-auth.r
 import observatoryAdminRoutes from './modules/observatory/admin/observatory-admin.routes';
 import observatoryDetectorRoutes from './modules/observatory/detector/detector.routes';
 import observatoryAIRoutes from './modules/observatory/ai/ai.routes';
+import humedalitoRoutes from './modules/observatory/humedalito/humedalito.routes';
 import observatoryRemoteSensingRoutes from './modules/observatory/remote-sensing/remote-sensing.routes';
 import arrecifesRoutes from './modules/observatory/arrecifes/arrecifes.routes';
 import humedalesAttributionRoutes from './modules/observatory/humedales/humedales-attribution.routes';
@@ -90,6 +91,7 @@ export function createApp() {
   app.use('/api/v1/observatory', observatoryAdminRoutes);
   app.use('/api/v1/observatory', observatoryDetectorRoutes);
   app.use('/api/v1/observatory', observatoryAIRoutes);
+  app.use('/api/v1/observatory', humedalitoRoutes);
   app.use('/api/v1/observatory', observatoryRemoteSensingRoutes);
   app.use('/api/v1', observatoryEventsRoutes);
 
