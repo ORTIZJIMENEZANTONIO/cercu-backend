@@ -524,6 +524,53 @@ export async function seedObservatoryContent() {
         ],
         updatedBy: 'seed',
       },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'headers',
+        items: [
+          { id: 'about', tag: 'Acerca de', title: '¿Que es el observatorio?', subtitle: 'Una plataforma integral para el monitoreo, analisis y visualizacion de humedales artificiales en la Ciudad de Mexico.' },
+          { id: 'proceso', tag: 'Proceso', title: 'Como funciona', subtitle: 'Un flujo de trabajo que integra datos geoespaciales, caracterizacion tecnica y analisis de servicios ecosistemicos.' },
+          { id: 'tipologias', tag: 'Clasificacion', title: 'Tipologias de humedales artificiales', subtitle: 'Tres categorias principales identificadas en el inventario de la Ciudad de Mexico.' },
+          { id: 'servicios', tag: 'Beneficios', title: 'Servicios ecosistemicos', subtitle: 'Principales beneficios ambientales que proveen los humedales artificiales de la CDMX.' },
+          { id: 'ods', tag: 'ODS', title: 'Alineacion con la Agenda 2030', subtitle: 'Los humedales artificiales contribuyen directamente a cuatro Objetivos de Desarrollo Sostenible.' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'kpis',
+        items: [
+          { label: 'Humedales artificiales inventariados', valor: '13', unidad: '', color: 'primary' },
+          { label: 'Superficie total', valor: '71,406', unidad: 'm² documentados', color: 'eco' },
+          { label: 'Alcaldias con humedales artificiales', valor: '7', unidad: '', color: 'secondary' },
+          { label: 'Tipologias principales', valor: '3', unidad: '', color: 'accent' },
+          { label: 'Capacidad de tratamiento', valor: '~2,640', unidad: 'm³/dia', color: 'primary' },
+          { label: 'Servicios ecosistemicos', valor: '9', unidad: 'tipos identificados', color: 'eco' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'odsTeaser',
+        items: [
+          { numero: '6', nombre: 'Agua limpia', color: '#26BDE2' },
+          { numero: '11', nombre: 'Ciudades sostenibles', color: '#FD9D24' },
+          { numero: '13', nombre: 'Accion por el clima', color: '#3F7E44' },
+          { numero: '15', nombre: 'Vida de ecosistemas', color: '#56C02B' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'mapTeaser',
+        items: [
+          { tag: 'Mapa', title: 'Explora la ubicacion de los humedales artificiales', subtitle: 'Visualiza los humedales artificiales inventariados en un mapa interactivo con datos tecnicos detallados.', cta: 'Ver mapa completo', ctaLink: '/mapa' },
+        ],
+        updatedBy: 'seed',
+      },
+      {
+        observatory: 'humedales', pageSlug: 'home', sectionKey: 'disclaimer',
+        items: [
+          { label: 'Fuente de datos:', body: 'Inventario de humedales artificiales en la Ciudad de Mexico, Fase 1. Elaboracion: M. en C. Diego Dominguez Solis — Instituto Politecnico Nacional.' },
+        ],
+        updatedBy: 'seed',
+      },
       // ── sobre ──
       {
         observatory: 'humedales', pageSlug: 'sobre', sectionKey: 'objetivos',
